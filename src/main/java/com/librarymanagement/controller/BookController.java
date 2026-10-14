@@ -2,6 +2,8 @@ package com.librarymanagement.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.librarymanagement.dto.BookResponse;
 import com.librarymanagement.dto.CreateBookRequest;
 import com.librarymanagement.dto.UpdateBookRequest;
 import com.librarymanagement.entity.Book;
@@ -95,8 +98,31 @@ public class BookController {
 	}
 
 	@GetMapping
-	public ResponseEntity<List<Book>> getAllBooks() {
-		return ResponseEntity.ok(bookService.getAllBooks());
+	public ResponseEntity<List<BookResponse>> getAllBooks() {
+
+		List<BookResponse> response = bookService.getAllBooks()//
+				.stream()//
+				.map(this::toResponse)//
+				.toList();
+
+		return ResponseEntity.ok(response);
+	}
+
+	private BookResponse toResponse(Book book) {
+
+		Set<String> authorNames = book.getAuthors()//
+				.stream()//
+				.map(author -> author.getName())//
+				.collect(Collectors.toSet());//
+
+		return new BookResponse(//
+				book.getId(), //
+				book.getTitle(), //
+				book.getIsbn(), //
+				book.getQuantity(), //
+				book.getPublishedDate(), //
+				authorNames//
+		);
 	}
 
 	@PostMapping("/import")

@@ -16,15 +16,22 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.librarymanagement.security.JwtAuthencationFilter;
+import com.librarymanagement.security.MaintenanceModeFilter;
+import com.librarymanagement.service.SystemConfigService;
 
 @Configuration
 public class SecurityConfig {
 
 	private final JwtAuthencationFilter jwtAuthencationFilter;
 
-	public SecurityConfig(JwtAuthencationFilter jwtAuthencationFilter) {
+	private final SystemConfigService systemConfigService;
+
+	public SecurityConfig(//
+			JwtAuthencationFilter jwtAuthencationFilter, //
+			SystemConfigService systemConfigService) {
 
 		this.jwtAuthencationFilter = jwtAuthencationFilter;
+		this.systemConfigService = systemConfigService;
 	}
 
 	@Bean
@@ -49,10 +56,7 @@ public class SecurityConfig {
 
 				.authorizeHttpRequests(auth -> auth//
 
-						// =========================
 						// AUTH - KHÔNG CẦN JWT
-						// =========================
-
 						.requestMatchers(//
 								"/auth/register", //
 								"/auth/login", ////
@@ -62,10 +66,7 @@ public class SecurityConfig {
 								"/error")//
 						.permitAll()//
 
-						// =========================
 						// BOOK PERMISSIONS
-						// =========================
-
 						// Xem / tìm kiếm sách
 						.requestMatchers(//
 								HttpMethod.GET, //
@@ -102,9 +103,7 @@ public class SecurityConfig {
 						)//
 						.hasAuthority("BOOK_DELETE")//
 
-						// ============================
 						// MEMBER PERMISSION
-						// ============================
 						// Xem/ search
 						.requestMatchers(HttpMethod.GET, "/api/members/**")//
 						.hasAuthority("MEMBER_VIEW")
@@ -121,25 +120,20 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, "/api/members/**")//
 						.hasAuthority("MEMBER_DELETE")
 
-						// =========================
 						// BORROW / RETURN PERMISSIONS
-						// =========================
-
 						// muon sach
-						.requestMatchers(//
-								HttpMethod.POST, //
-								"/api/borrow/**"//
+						.requestMatchers(HttpMethod.POST, "/api/borrow/**"//
 						).hasAuthority("BORROW_BOOK")
 
 						// tra sach
-						.requestMatchers(//
-								HttpMethod.PUT, //
-								"/api/borrow/**"//
+						.requestMatchers(HttpMethod.PUT, "/api/borrow/**"//
 						).hasAuthority("RETURN_BOOK")
 						// =========================
-						// API KHÁC
-						// =========================
+						// MAINTENANCE
+						.requestMatchers("/api/system-config/**")//
+						.hasAuthority("SYSTEM_MAINTENANCE")
 
+						// API KHÁC
 						// Tạm thời chỉ yêu cầu đăng nhập.
 						// Sau này Member/Borrow/Maintenance
 						// sẽ gắn permission riêng.
@@ -154,7 +148,9 @@ public class SecurityConfig {
 				.addFilterBefore(//
 						jwtAuthencationFilter, //
 						UsernamePasswordAuthenticationFilter.class//
-				);//
+				)//
+				.addFilterAfter(//
+						new MaintenanceModeFilter(systemConfigService), JwtAuthencationFilter.class);//
 
 		return http.build();//
 	}

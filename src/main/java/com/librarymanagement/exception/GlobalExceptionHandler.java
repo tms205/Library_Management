@@ -146,4 +146,14 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
 
 	}
+
+	@ExceptionHandler(SystemConfigNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleSystemConfigNotFound(SystemConfigNotFoundException exception) {
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+
+	}
 }

@@ -1,0 +1,4 @@
+dto tách ra cho gọn thành request vs response
+exception làm gọn lại ex: accountnotfoundexception vs booknotfoundexception thu gọn lại
+các bảng migrate thì chỉnh theo- ngày-tháng-năm-create.... để cho chuẩn
+làm giao diện hoàn chỉnh

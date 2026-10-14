@@ -22,3 +22,9 @@ databaseChangeLog:
 
   - include:
      file: db/changelog/008-assign-existing-accounts-to-groups.sql
+
+  - include:
+     file: db/changelog/009-create-system-config.sql	 
+   
+     
+    

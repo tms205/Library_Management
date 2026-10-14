@@ -16,6 +16,7 @@ import com.librarymanagement.dto.UpdateMemberRequest;
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.Member;
 import com.librarymanagement.exception.AccountNotFoundException;
+import com.librarymanagement.exception.MemberAlreadyExistsException;
 import com.librarymanagement.exception.MemberNotFoundException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.MemberRepository;
@@ -62,7 +63,7 @@ public class MemberService {
 
 		if (memberRepository.existsByAccount_Id(account.getId())) {
 
-			throw new RuntimeException(//
+			throw new MemberAlreadyExistsException(//
 					"Account này đã có Member!");
 		}
 
@@ -155,8 +156,8 @@ public class MemberService {
 				MemberSpecification.hasFullName(fullName)//
 						.and(MemberSpecification.hasPhone(phone))//
 						.and(MemberSpecification.hasAddress(address))//
-						.and(MemberSpecification.hasDateOfBirthBetween(fromDate, toDate)//
-								.and(MemberSpecification.hasBorrowedBook(bookId)));//
+						.and(MemberSpecification.hasDateOfBirthBetween(fromDate, toDate))//
+						.and(MemberSpecification.hasBorrowedBook(bookId));//
 
 		return memberRepository.findAll(spec, pageable);
 	}

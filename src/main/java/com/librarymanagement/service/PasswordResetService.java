@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.PasswordResetToken;
+import com.librarymanagement.exception.AccountNotFoundException;
 import com.librarymanagement.exception.PasswordResetException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.PasswordResetTokenRepository;
@@ -36,8 +37,9 @@ public class PasswordResetService {
 
 	@Transactional
 	public void forgotPassword(String email) {
-		Account account = accountRepository.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này!"));
+		Account account = accountRepository.findByEmail(email)//
+				.orElseThrow(() -> //
+				new AccountNotFoundException("Không tìm thấy tài khoản với email này!"));
 
 		String token = UUID.randomUUID().toString();
 
