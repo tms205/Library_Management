@@ -75,6 +75,75 @@ public class GlobalExceptionHandler {
 		error.put("message", exception.getMessage());
 
 		return ResponseEntity.badRequest().body(error);
+	}
+
+	@ExceptionHandler(BookNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleBookNotFound(BookNotFoundException exception) {
+
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+	}
+
+	@ExceptionHandler(BookImportException.class)
+	public ResponseEntity<Map<String, String>> handleBookImport(BookImportException exception) {
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.badRequest().body(error);
+	}
+
+	@ExceptionHandler(EmailAlreadyExistsException.class)
+	public ResponseEntity<Map<String, String>> handleEmailAlreadyExists(EmailAlreadyExistsException exception) {
+
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+	}
+
+	@ExceptionHandler(MemberNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleMemberNotFound(MemberNotFoundException exception) {
+
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+
+	}
+
+	@ExceptionHandler(BorrowException.class)
+	public ResponseEntity<Map<String, String>> handleBorrow(BorrowException exception) {
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+
+	}
+
+	@ExceptionHandler(AccountNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleAccountNotFound(AccountNotFoundException exception) {
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+
+	}
+
+	@ExceptionHandler(MemberAlreadyExistsException.class)
+	public ResponseEntity<Map<String, String>> handleMemberAlreadyExists(MemberAlreadyExistsException exception) {
+		Map<String, String> error = new HashMap<>();
+
+		error.put("message", exception.getMessage());
+
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
 
 	}
 }

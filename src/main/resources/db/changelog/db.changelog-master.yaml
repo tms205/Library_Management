@@ -13,3 +13,12 @@ databaseChangeLog:
 
   - include:
       file: db/changelog/005-create-email-change-request.sql
+
+  - include:
+      file: db/changelog/006-create-permission-system.sql
+
+  - include:
+     file: db/changelog/007-seed-permissions.sql
+
+  - include:
+     file: db/changelog/008-assign-existing-accounts-to-groups.sql
