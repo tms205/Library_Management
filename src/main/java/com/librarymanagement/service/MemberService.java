@@ -11,13 +11,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.librarymanagement.dto.CreateMemberRequest;
-import com.librarymanagement.dto.UpdateMemberRequest;
+import com.librarymanagement.dto.request.CreateMemberRequest;
+import com.librarymanagement.dto.request.UpdateMemberRequest;
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.Member;
-import com.librarymanagement.exception.AccountNotFoundException;
-import com.librarymanagement.exception.MemberAlreadyExistsException;
-import com.librarymanagement.exception.MemberNotFoundException;
+import com.librarymanagement.exception.ResourceNotFoundException;
+import com.librarymanagement.exception.ConflictException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.MemberRepository;
 import com.librarymanagement.specification.MemberSpecification;
@@ -46,7 +45,7 @@ public class MemberService {
 	public Member getMemberById(Long id) {
 
 		return memberRepository.findById(id)//
-				.orElseThrow(() -> new MemberNotFoundException(//
+				.orElseThrow(() -> new ResourceNotFoundException(//
 						"Không tìm thấy member có id: " + id));//
 	}
 
@@ -57,13 +56,13 @@ public class MemberService {
 		Account account = accountRepository.findById(//
 				request.getAccountId())//
 				.orElseThrow(() -> //
-				new AccountNotFoundException(//
+				new ResourceNotFoundException(//
 						"Không tìm thấy account có id: "//
 								+ request.getAccountId()));
 
 		if (memberRepository.existsByAccount_Id(account.getId())) {
 
-			throw new MemberAlreadyExistsException(//
+			throw new ConflictException(//
 					"Account này đã có Member!");
 		}
 
@@ -83,7 +82,7 @@ public class MemberService {
 	public Member updateMember(Long id, UpdateMemberRequest request) {
 
 		Member member = memberRepository.findById(id)//
-				.orElseThrow(() -> new MemberNotFoundException(//
+				.orElseThrow(() -> new ResourceNotFoundException(//
 						"Không tìm thấy member có id: " + id));
 
 		member.setFullName(request.getFullName());
@@ -99,7 +98,7 @@ public class MemberService {
 	public void deleteMember(Long id) {
 
 		Member member = memberRepository.findById(id)//
-				.orElseThrow(() -> new MemberNotFoundException(//
+				.orElseThrow(() -> new ResourceNotFoundException(//
 						"Không tìm thấy member có id: " + id));
 
 		memberRepository.delete(member);

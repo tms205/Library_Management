@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.PasswordResetToken;
-import com.librarymanagement.exception.AccountNotFoundException;
-import com.librarymanagement.exception.PasswordResetException;
+import com.librarymanagement.exception.ResourceNotFoundException;
+import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.PasswordResetTokenRepository;
 
@@ -39,7 +39,7 @@ public class PasswordResetService {
 	public void forgotPassword(String email) {
 		Account account = accountRepository.findByEmail(email)//
 				.orElseThrow(() -> //
-				new AccountNotFoundException("Không tìm thấy tài khoản với email này!"));
+				new ResourceNotFoundException("Không tìm thấy tài khoản với email này!"));
 
 		String token = UUID.randomUUID().toString();
 
@@ -59,10 +59,10 @@ public class PasswordResetService {
 	@Transactional
 	public void resetPassword(String token, String newPassword) {
 		PasswordResetToken resetToken = tokenRepository.findByToken(token)
-				.orElseThrow(() -> new PasswordResetException("Token reset password không hợp lệ!"));
+				.orElseThrow(() -> new BadRequestException("Token reset password không hợp lệ!"));
 
 		if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-			throw new PasswordResetException("Token reset password đã hết hạn!");
+			throw new BadRequestException("Token reset password đã hết hạn!");
 		}
 
 		Account account = resetToken.getAccount();

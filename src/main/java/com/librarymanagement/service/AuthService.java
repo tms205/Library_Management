@@ -4,17 +4,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.librarymanagement.dto.LoginRequest;
-import com.librarymanagement.dto.LoginResponse;
-import com.librarymanagement.dto.RegisterRequest;
+import com.librarymanagement.dto.request.LoginRequest;
+import com.librarymanagement.dto.request.RegisterRequest;
+import com.librarymanagement.dto.response.LoginResponse;
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.Member;
 import com.librarymanagement.entity.PermissionGroup;
+import com.librarymanagement.entity.RefreshToken;
 import com.librarymanagement.entity.Role;
-import com.librarymanagement.exception.AccountNotVerifiedException;
-import com.librarymanagement.exception.ChangePasswordException;
-import com.librarymanagement.exception.EmailAlreadyExistsException;
-import com.librarymanagement.exception.InvalidCredentialsException;
+import com.librarymanagement.exception.BadRequestException;
+import com.librarymanagement.exception.ConflictException;
+import com.librarymanagement.exception.UnauthorizedException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.MemberRepository;
 import com.librarymanagement.repository.PermissionGroupRepository;
@@ -33,9 +33,17 @@ public class AuthService {
 	private final EmailVerificationService emailVerificationService;
 	private final EmailService emailService;
 
-	public AuthService(AccountRepository accountRepository, MemberRepository memberRepository,
-			PasswordEncoder passwordEncoder, JwtService jwtService, EmailVerificationService emailVerificationService,
-			EmailService emailService, PermissionGroupRepository permissionGroupRepository) {
+	private final RefreshTokenService refreshTokenService;
+
+	public AuthService(//
+			AccountRepository accountRepository, //
+			MemberRepository memberRepository, //
+			PasswordEncoder passwordEncoder, //
+			JwtService jwtService, //
+			EmailVerificationService emailVerificationService, //
+			EmailService emailService, //
+			PermissionGroupRepository permissionGroupRepository, //
+			RefreshTokenService refreshTokenService) {
 
 		this.accountRepository = accountRepository;
 		this.memberRepository = memberRepository;
@@ -44,13 +52,14 @@ public class AuthService {
 		this.emailVerificationService = emailVerificationService;
 		this.emailService = emailService;
 		this.permissionGroupRepository = permissionGroupRepository;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Transactional
 	public void register(RegisterRequest request) {
 
 		if (accountRepository.existsByEmail(request.getEmail())) {
-			throw new EmailAlreadyExistsException("Email đã tồn tại!");
+			throw new ConflictException("Email đã tồn tại!");
 		}
 
 		Account account = new Account();
@@ -100,45 +109,79 @@ public class AuthService {
 		emailService.sendVerificationEmail(account.getEmail(), token);
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public LoginResponse login(LoginRequest request) {
 
 		Account account = accountRepository.findByEmail(request.getEmail())
-				.orElseThrow(() -> new InvalidCredentialsException("Email hoặc mật khẩu không đúng!"));
+				.orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không đúng!"));
 
 		boolean passwordMatches = passwordEncoder.matches(request.getPassword(), account.getPassword());
 
 		if (!passwordMatches) {
-			throw new InvalidCredentialsException("Email hoặc mật khẩu không đúng!");
+			throw new UnauthorizedException("Email hoặc mật khẩu không đúng!");
 		}
 
 		if (!account.getEnabled()) {
-			throw new AccountNotVerifiedException("Tài khoản chưa được xác minh email!");
+			throw new UnauthorizedException("Tài khoản chưa được xác minh email!");
 		}
 
-		String token = jwtService.generateToken(account);
+		String accessToken = jwtService.generateToken(account);
 
-		return new LoginResponse(token, "Bearer");
+		String refreshToken = refreshTokenService//
+				.createRefreshToken(account)//
+				.getToken();
+
+		return new LoginResponse(//
+				accessToken, //
+				refreshToken, //
+				"Bearer");
 	}
 
 	@Transactional
 	public void changePassword(String email, String oldPassword, String newPassword) {
 
 		Account account = accountRepository.findByEmail(email)
-				.orElseThrow(() -> new ChangePasswordException("Không tìm thấy tài khoản!"));
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản!"));
 
 		if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
 
-			throw new ChangePasswordException("Mật khẩu hiện tại không chính xác!");
+			throw new BadRequestException("Mật khẩu hiện tại không chính xác!");
 		}
 
 		if (passwordEncoder.matches(newPassword, account.getPassword())) {
 
-			throw new ChangePasswordException("Mật khẩu mới không được trùng mật khẩu hiện tại!");
+			throw new BadRequestException("Mật khẩu mới không được trùng mật khẩu hiện tại!");
 		}
 
 		account.setPassword(passwordEncoder.encode(newPassword));
 
 		accountRepository.save(account);
+	}
+
+	@Transactional(readOnly = true)
+	public LoginResponse refreshToken(String token) {
+
+		RefreshToken refreshToken = //
+				refreshTokenService.verifyRefreshToken(token);
+
+		Account account = refreshToken.getAccount();
+
+		String newAccessToken = //
+				jwtService.generateToken(account);
+
+		return new LoginResponse(//
+				newAccessToken, //
+				refreshToken.getToken(), //
+				"Bearer");
+	}
+
+	@Transactional
+	public void logout(String email) {
+
+		Account account = accountRepository.findByEmail(email)//
+				.orElseThrow(() -> new UnauthorizedException(//
+						"Không tìm thấy tài khoản!"));//
+
+		refreshTokenService.deleteByAccountId(account.getId());
 	}
 }

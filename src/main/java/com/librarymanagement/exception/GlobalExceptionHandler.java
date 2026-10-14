@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	// bắt lỗi validation từ request gửi lên
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<Map<String, String>> handleValidationException(MethodArgumentNotValidException exception) {
 		Map<String, String> errors = new HashMap<>();
@@ -23,137 +24,35 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.badRequest().body(errors);
 	}
 
-	@ExceptionHandler(InvalidCredentialsException.class)
-	public ResponseEntity<Map<String, String>> handleInvalidCredentials(InvalidCredentialsException exception) {
+	@ExceptionHandler(ResourceNotFoundException.class)
+	public ResponseEntity<Map<String, String>> handleResourceNotFound(ResourceNotFoundException exception) {
 		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-	}
-
-	@ExceptionHandler(AccountNotVerifiedException.class)
-	public ResponseEntity<Map<String, String>> handleAccountNotVerified(AccountNotVerifiedException exception) {
-		Map<String, String> error = new HashMap<>();
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-	}
-
-	@ExceptionHandler(VerificationTokenException.class)
-	public ResponseEntity<Map<String, String>> handleVerificationToken(VerificationTokenException exception) {
-		Map<String, String> error = new HashMap<>();
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.badRequest().body(error);
-	}
-
-	@ExceptionHandler(PasswordResetException.class)
-	public ResponseEntity<Map<String, String>> handlePasswordReset(PasswordResetException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.badRequest().body(error);
-
-	}
-
-	@ExceptionHandler(ChangePasswordException.class)
-	public ResponseEntity<Map<String, String>> handleChangePassword(ChangePasswordException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.badRequest().body(error);
-
-	}
-
-	@ExceptionHandler(ChangeEmailException.class)
-	public ResponseEntity<Map<String, String>> handleChangeEmail(ChangeEmailException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.badRequest().body(error);
-	}
-
-	@ExceptionHandler(BookNotFoundException.class)
-	public ResponseEntity<Map<String, String>> handleBookNotFound(BookNotFoundException exception) {
-
-		Map<String, String> error = new HashMap<>();
-
 		error.put("message", exception.getMessage());
 
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
 	}
 
-	@ExceptionHandler(BookImportException.class)
-	public ResponseEntity<Map<String, String>> handleBookImport(BookImportException exception) {
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<Map<String, String>> handleBadRequest(BadRequestException exception) {
 		Map<String, String> error = new HashMap<>();
-
 		error.put("message", exception.getMessage());
 
-		return ResponseEntity.badRequest().body(error);
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
 	}
 
-	@ExceptionHandler(EmailAlreadyExistsException.class)
-	public ResponseEntity<Map<String, String>> handleEmailAlreadyExists(EmailAlreadyExistsException exception) {
-
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<Map<String, String>> handleConflict(ConflictException exception) {
 		Map<String, String> error = new HashMap<>();
-
 		error.put("message", exception.getMessage());
 
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
 	}
 
-	@ExceptionHandler(MemberNotFoundException.class)
-	public ResponseEntity<Map<String, String>> handleMemberNotFound(MemberNotFoundException exception) {
-
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException exception) {
 		Map<String, String> error = new HashMap<>();
-
 		error.put("message", exception.getMessage());
 
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-
-	}
-
-	@ExceptionHandler(BorrowException.class)
-	public ResponseEntity<Map<String, String>> handleBorrow(BorrowException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-
-	}
-
-	@ExceptionHandler(AccountNotFoundException.class)
-	public ResponseEntity<Map<String, String>> handleAccountNotFound(AccountNotFoundException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-
-	}
-
-	@ExceptionHandler(MemberAlreadyExistsException.class)
-	public ResponseEntity<Map<String, String>> handleMemberAlreadyExists(MemberAlreadyExistsException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-
-	}
-
-	@ExceptionHandler(SystemConfigNotFoundException.class)
-	public ResponseEntity<Map<String, String>> handleSystemConfigNotFound(SystemConfigNotFoundException exception) {
-		Map<String, String> error = new HashMap<>();
-
-		error.put("message", exception.getMessage());
-
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
 	}
 }

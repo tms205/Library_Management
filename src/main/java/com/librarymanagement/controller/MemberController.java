@@ -16,16 +16,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.librarymanagement.dto.CreateMemberRequest;
-import com.librarymanagement.dto.MemberResponse;
-import com.librarymanagement.dto.UpdateMemberRequest;
+import com.librarymanagement.dto.request.CreateMemberRequest;
+import com.librarymanagement.dto.response.MemberResponse;
+import com.librarymanagement.dto.request.UpdateMemberRequest;
 import com.librarymanagement.entity.Member;
 import com.librarymanagement.service.MemberService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/members")
+@SecurityRequirement(name = "bearerAuth")
 public class MemberController {
 
 	private final MemberService memberService;

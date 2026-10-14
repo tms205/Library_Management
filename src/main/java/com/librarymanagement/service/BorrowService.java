@@ -4,13 +4,13 @@ import java.time.LocalDate;
 
 import org.springframework.stereotype.Service;
 
-import com.librarymanagement.dto.BorrowBookRequest;
+import com.librarymanagement.dto.request.BorrowBookRequest;
 import com.librarymanagement.entity.Book;
 import com.librarymanagement.entity.BorrowRecord;
 import com.librarymanagement.entity.BorrowStatus;
 import com.librarymanagement.entity.Member;
-import com.librarymanagement.exception.BookNotFoundException;
-import com.librarymanagement.exception.BorrowException;
+import com.librarymanagement.exception.ResourceNotFoundException;
+import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.repository.BookRepository;
 import com.librarymanagement.repository.BorrowRecordRepository;
 import com.librarymanagement.repository.MemberRepository;
@@ -40,16 +40,16 @@ public class BorrowService {
 		// 1.find member
 		Member member = memberRepository.findById(request.getMemberId())//
 				.orElseThrow(() -> //
-				new BorrowException("Không tìm thấy member có id: " + request.getMemberId()));
+				new BadRequestException("Không tìm thấy member có id: " + request.getMemberId()));
 
 		// 2.find book
 		Book book = bookRepository.findById(request.getBookId())//
 				.orElseThrow(() -> //
-				new BookNotFoundException("Không tìm thấy sách!"));
+				new ResourceNotFoundException("Không tìm thấy sách!"));
 
 		// check quantity book
 		if (book.getQuantity() <= 0) {
-			throw new BorrowException("Sách đã hết!");
+			throw new BadRequestException("Sách đã hết!");
 		}
 
 		// check member có đang mượn sách kh
@@ -57,7 +57,7 @@ public class BorrowService {
 				.existsByMember_IdAndStatus(member.getId(), BorrowStatus.BORROWED);
 
 		if (isBorrowing) {
-			throw new BorrowException("Member đang mượn sách, không thể mượn thêm!!");
+			throw new BadRequestException("Member đang mượn sách, không thể mượn thêm!!");
 		}
 
 		// 5. trừ sl sách
@@ -85,10 +85,10 @@ public class BorrowService {
 	public BorrowRecord returnBook(Long borrowRecordId) {
 
 		BorrowRecord record = borrowRecordRepository.findById(borrowRecordId)
-				.orElseThrow(() -> new BorrowException("Không tìm thấy phiếu mượn!"));
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy phiếu mượn!"));
 
 		if (record.getStatus() == BorrowStatus.RETURNED) {
-			throw new BorrowException("Sách này đã được trả!");
+			throw new BadRequestException("Sách này đã được trả!");
 		}
 
 		record.setReturnDate(LocalDate.now());

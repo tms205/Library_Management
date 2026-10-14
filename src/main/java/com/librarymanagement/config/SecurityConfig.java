@@ -56,6 +56,13 @@ public class SecurityConfig {
 
 				.authorizeHttpRequests(auth -> auth//
 
+						// swagger
+						.requestMatchers(//
+								"/swagger-ui/**", //
+								"/swagger-ui.html", //
+								"/v3/api-docs/**"//
+						).permitAll()
+
 						// AUTH - KHÔNG CẦN JWT
 						.requestMatchers(//
 								"/auth/register", //
@@ -63,6 +70,7 @@ public class SecurityConfig {
 								"/auth/verify-email", //
 								"/auth/forgot-password", //
 								"/auth/reset-password", //
+								"/auth/refresh", //
 								"/error")//
 						.permitAll()//
 

@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.EmailVerificationToken;
-import com.librarymanagement.exception.VerificationTokenException;
+import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.EmailVerificationTokenRepository;
 
@@ -45,10 +45,10 @@ public class EmailVerificationService {
 	@Transactional
 	public void verifyEmail(String token) {
 		EmailVerificationToken verificationToken = tokenRepository.findByToken(token)
-				.orElseThrow(() -> new VerificationTokenException("Token xác minh không hợp lệ!"));
+				.orElseThrow(() -> new BadRequestException("Token xác minh không hợp lệ!"));
 
 		if (verificationToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-			throw new VerificationTokenException("Token xác minh đã hết hạn!");
+			throw new BadRequestException("Token xác minh đã hết hạn!");
 		}
 
 		// xác minh xong xóa token đi

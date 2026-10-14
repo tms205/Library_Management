@@ -9,15 +9,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.librarymanagement.dto.BorrowBookRequest;
-import com.librarymanagement.dto.BorrowResponse;
+import com.librarymanagement.dto.request.BorrowBookRequest;
+import com.librarymanagement.dto.response.BorrowResponse;
 import com.librarymanagement.entity.BorrowRecord;
 import com.librarymanagement.service.BorrowService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/borrow")
+@SecurityRequirement(name = "bearerAuth")
 public class BorrowController {
 
 	private final BorrowService borrowService;

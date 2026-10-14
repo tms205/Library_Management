@@ -11,20 +11,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.librarymanagement.dto.ChangeEmailRequest;
-import com.librarymanagement.dto.ChangePasswordRequest;
-import com.librarymanagement.dto.ConfirmChangeEmailRequest;
-import com.librarymanagement.dto.ForgotPasswordRequest;
-import com.librarymanagement.dto.LoginRequest;
-import com.librarymanagement.dto.LoginResponse;
-import com.librarymanagement.dto.RegisterRequest;
-import com.librarymanagement.dto.ResetPasswordRequest;
+import com.librarymanagement.dto.request.ChangeEmailRequest;
+import com.librarymanagement.dto.request.ChangePasswordRequest;
+import com.librarymanagement.dto.request.ConfirmChangeEmailRequest;
+import com.librarymanagement.dto.request.ForgotPasswordRequest;
+import com.librarymanagement.dto.request.LoginRequest;
+import com.librarymanagement.dto.request.RefreshTokenRequest;
+import com.librarymanagement.dto.request.RegisterRequest;
+import com.librarymanagement.dto.request.ResetPasswordRequest;
+import com.librarymanagement.dto.response.LoginResponse;
 import com.librarymanagement.security.TokenBlacklistService;
 import com.librarymanagement.service.AuthService;
 import com.librarymanagement.service.EmailChangeService;
 import com.librarymanagement.service.EmailVerificationService;
 import com.librarymanagement.service.PasswordResetService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
@@ -74,6 +76,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/logout")
+	@SecurityRequirement(name = "bearerAuth")
 	public ResponseEntity<String> logout(@RequestHeader("Authorization") String authorizationHeader) {
 		String token = authorizationHeader.substring(7);// - cai bearer
 
@@ -99,6 +102,7 @@ public class AuthController {
 	}
 
 	@PutMapping("/change-password")
+	@SecurityRequirement(name = "bearerAuth")
 	public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request,
 			Authentication authentication) {
 
@@ -110,6 +114,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/change-email/request")
+	@SecurityRequirement(name = "bearerAuth")
 	public ResponseEntity<String> requestChangeEmail(@Valid @RequestBody ChangeEmailRequest request, //
 			Authentication authentication) {
 
@@ -121,6 +126,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/change-email/confirm")
+	@SecurityRequirement(name = "bearerAuth")
 	public ResponseEntity<String> confirmChangeEmail(@Valid @RequestBody ConfirmChangeEmailRequest request, //
 			Authentication authentication, //
 			@RequestHeader("Authorization") String authorizationHeader//
@@ -134,5 +140,13 @@ public class AuthController {
 		tokenBlacklistService.blacklist(token);
 
 		return ResponseEntity.ok("Đổi email thành công!, vui lòng login lại!");
+	}
+
+	@PostMapping("/refresh")
+	public ResponseEntity<LoginResponse> refreshToken(//
+			@Valid @RequestBody RefreshTokenRequest request) {
+
+		return ResponseEntity.ok(//
+				authService.refreshToken(request.getRefreshToken()));
 	}
 }

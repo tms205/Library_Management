@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.EmailChangeRequest;
-import com.librarymanagement.exception.ChangeEmailException;
+import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.repository.AccountRepository;
 import com.librarymanagement.repository.EmailChangeRequestRepository;
 
@@ -33,14 +33,14 @@ public class EmailChangeService {
 	@Transactional
 	public void requestChangeEmail(String currentEmail, String newEmail) {
 		Account account = accountRepository.findByEmail(currentEmail)
-				.orElseThrow(() -> new ChangeEmailException("Không tìm thấy tài khoản!"));
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản!"));
 
 		if (account.getEmail().equalsIgnoreCase(newEmail)) {
-			throw new ChangeEmailException("Email mới không được trùng email hiện tại!");
+			throw new BadRequestException("Email mới không được trùng email hiện tại!");
 		}
 
 		if (accountRepository.existsByEmail(newEmail)) {
-			throw new ChangeEmailException("Email này đã được sử dụng!");
+			throw new BadRequestException("Email này đã được sử dụng!");
 		}
 
 		String code = String.format("%06d", // random ra 123 thif %06 tu render 000123 du 6 so
@@ -64,17 +64,17 @@ public class EmailChangeService {
 	@Transactional
 	public void confirmChangeEmail(String currentEmail, String code) {
 		Account account = accountRepository.findByEmail(currentEmail)
-				.orElseThrow(() -> new ChangeEmailException("Không tìm thấy tài khoản!"));
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản!"));
 
 		EmailChangeRequest changeRequest = emailChangeRequestRepository.findByAccount(account)
-				.orElseThrow(() -> new ChangeEmailException("Bạn chưa yêu cầu thay đổi email!"));
+				.orElseThrow(() -> new BadRequestException("Bạn chưa yêu cầu thay đổi email!"));
 
 		if (changeRequest.getExpiresAt().isBefore(LocalDateTime.now())) {
-			throw new ChangeEmailException("Mã xác minh đã hết hạn!");
+			throw new BadRequestException("Mã xác minh đã hết hạn!");
 		}
 
 		if (accountRepository.existsByEmail(changeRequest.getNewEmail())) {
-			throw new ChangeEmailException("Email này đã được sử dụng!");
+			throw new BadRequestException("Email này đã được sử dụng!");
 		}
 
 		account.setEmail(changeRequest.getNewEmail());

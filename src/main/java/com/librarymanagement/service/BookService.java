@@ -15,11 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.librarymanagement.dto.CreateBookRequest;
-import com.librarymanagement.dto.UpdateBookRequest;
+import com.librarymanagement.dto.request.CreateBookRequest;
+import com.librarymanagement.dto.request.UpdateBookRequest;
 import com.librarymanagement.entity.Book;
-import com.librarymanagement.exception.BookImportException;
-import com.librarymanagement.exception.BookNotFoundException;
+import com.librarymanagement.exception.BadRequestException;
+import com.librarymanagement.exception.ResourceNotFoundException;
 import com.librarymanagement.repository.BookCriteriaRepository;
 import com.librarymanagement.repository.BookRepository;
 import com.librarymanagement.specification.BookSpecification;
@@ -100,7 +100,7 @@ public class BookService {
 	public Book updateBook(Long id, UpdateBookRequest request) {
 		Book book = bookRepository.findById(id).//
 				orElseThrow(() -> //
-				new BookNotFoundException("Không thấy sách có ID: " + id));
+				new ResourceNotFoundException("Không thấy sách có ID: " + id));
 
 		book.setTitle(request.getTitle());
 		book.setIsbn(request.getIsbn());
@@ -114,7 +114,7 @@ public class BookService {
 	@Transactional
 	public void deleteBook(Long id) {
 		Book book = bookRepository.findById(id)//
-				.orElseThrow(() -> new BookNotFoundException("Không tìm thấy sách có id: " + id));
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách có id: " + id));
 
 		bookRepository.delete(book);
 	}
@@ -123,7 +123,7 @@ public class BookService {
 	@Transactional(readOnly = true)
 	public Book getBookById(Long id) {
 		return bookRepository.findById(id)//
-				.orElseThrow(() -> new BookNotFoundException("Không tìm thấy sách có id: " + id));
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sách có id: " + id));
 	}
 
 	// get all book
@@ -137,17 +137,17 @@ public class BookService {
 	@Transactional
 	public int importBooks(MultipartFile file) {
 		if (file.isEmpty()) {
-			throw new BookImportException("File không được để trống!");
+			throw new BadRequestException("File không được để trống!");
 		}
 
 		String fileName = file.getOriginalFilename();
 
 		if (fileName == null || !fileName.toLowerCase().endsWith(".csv")) {
-			throw new BookImportException("Chỉ hỗ trợ file CSV!");
+			throw new BadRequestException("Chỉ hỗ trợ file CSV!");
 		}
 
 		if (file.getSize() >= 5 * 1024 * 1024) {
-			throw new BookImportException("File phải nhỏ hơn 5MB!");
+			throw new BadRequestException("File phải nhỏ hơn 5MB!");
 		}
 
 		List<Book> books = new ArrayList<>();
@@ -174,13 +174,13 @@ public class BookService {
 						LocalDate.parse(record.get("publishedDate").trim());
 
 				if (title.isBlank()) {
-					throw new BookImportException("Tiêu đề không được để trống!");
+					throw new BadRequestException("Tiêu đề không được để trống!");
 				}
 				if (isbn.isBlank()) {
-					throw new BookImportException("ISBN không được để trống!");
+					throw new BadRequestException("ISBN không được để trống!");
 				}
 				if (quantity < 0) {
-					throw new BookImportException("Số lượng phải lớn hơn hoặc bằng 0!");
+					throw new BadRequestException("Số lượng phải lớn hơn hoặc bằng 0!");
 				}
 
 				Book book = new Book();
@@ -193,14 +193,14 @@ public class BookService {
 			}
 			bookRepository.saveAll(books);
 			return books.size();
-		} catch (BookImportException exception) {
+		} catch (BadRequestException exception) {
 
 			throw exception;
 
 		} catch (Exception exception) {
 			exception.printStackTrace();
 
-			throw new BookImportException("Lỗi import CSV: " + exception.getMessage());
+			throw new BadRequestException("Lỗi import CSV: " + exception.getMessage());
 		}
 	}
 }

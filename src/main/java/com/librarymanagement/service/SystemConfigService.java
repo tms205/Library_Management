@@ -3,9 +3,9 @@ package com.librarymanagement.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.librarymanagement.dto.MaintenanceRequest;
+import com.librarymanagement.dto.request.MaintenanceRequest;
 import com.librarymanagement.entity.SystemConfig;
-import com.librarymanagement.exception.SystemConfigNotFoundException;
+import com.librarymanagement.exception.ResourceNotFoundException;
 import com.librarymanagement.repository.SystemConfigRepository;
 
 @Service
@@ -22,7 +22,7 @@ public class SystemConfigService {
 	public SystemConfig getConfig() {
 		return systemConfigRepository.findFirstByOrderByIdAsc()//
 				.orElseThrow(() -> //
-				new SystemConfigNotFoundException("Không tìm thấy system config!"));
+				new ResourceNotFoundException("Không tìm thấy system config!"));
 	}
 
 	// turn on / off maintenance

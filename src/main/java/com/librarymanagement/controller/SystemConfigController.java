@@ -6,14 +6,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.librarymanagement.dto.MaintenanceRequest;
+import com.librarymanagement.dto.request.MaintenanceRequest;
 import com.librarymanagement.entity.SystemConfig;
 import com.librarymanagement.service.SystemConfigService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/system-config")
+@SecurityRequirement(name = "bearerAuth")
 public class SystemConfigController {
 
 	private final SystemConfigService systemConfigService;

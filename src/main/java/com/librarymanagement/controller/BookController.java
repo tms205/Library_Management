@@ -18,16 +18,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.librarymanagement.dto.BookResponse;
-import com.librarymanagement.dto.CreateBookRequest;
-import com.librarymanagement.dto.UpdateBookRequest;
+import com.librarymanagement.dto.response.BookResponse;
+import com.librarymanagement.dto.request.CreateBookRequest;
+import com.librarymanagement.dto.request.UpdateBookRequest;
 import com.librarymanagement.entity.Book;
 import com.librarymanagement.service.BookService;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/books")
+@SecurityRequirement(name = "bearerAuth")
 public class BookController {
 
 	private final BookService bookService;
