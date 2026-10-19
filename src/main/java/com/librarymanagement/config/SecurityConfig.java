@@ -44,6 +44,7 @@ public class SecurityConfig {
 						corsConfigurationSource()//
 				)//
 				)
+
 				// Dùng JWT nên tắt CSRF
 				.csrf(csrf -> csrf.disable())//
 
@@ -66,12 +67,13 @@ public class SecurityConfig {
 						// AUTH - KHÔNG CẦN JWT
 						.requestMatchers(//
 								"/auth/register", //
-								"/auth/login", ////
+								"/auth/login", //
 								"/auth/verify-email", //
 								"/auth/forgot-password", //
 								"/auth/reset-password", //
 								"/auth/refresh", //
-								"/error")//
+								"/error"//
+						)//
 						.permitAll()//
 
 						// BOOK PERMISSIONS
@@ -98,7 +100,7 @@ public class SecurityConfig {
 						.hasAuthority("BOOK_CREATE")//
 
 						// Sửa sách
-						.requestMatchers(///
+						.requestMatchers(//
 								HttpMethod.PUT, //
 								"/api/books/**"//
 						)//
@@ -112,43 +114,61 @@ public class SecurityConfig {
 						.hasAuthority("BOOK_DELETE")//
 
 						// MEMBER PERMISSION
-						// Xem/ search
-						.requestMatchers(HttpMethod.GET, "/api/members/**")//
-						.hasAuthority("MEMBER_VIEW")
+						// Xem / search
+						.requestMatchers(//
+								HttpMethod.GET, //
+								"/api/members/**"//
+						)//
+						.hasAuthority("MEMBER_VIEW")//
 
 						// add member
-						.requestMatchers(HttpMethod.POST, "/api/members", "/api/members/**")//
-						.hasAuthority("MEMBER_CREATE")
+						.requestMatchers(//
+								HttpMethod.POST, //
+								"/api/members", //
+								"/api/members/**"//
+						)//
+						.hasAuthority("MEMBER_CREATE")//
 
 						// update member
-						.requestMatchers(HttpMethod.PUT, "/api/members/**")//
-						.hasAuthority("MEMBER_UPDATE")
+						.requestMatchers(//
+								HttpMethod.PUT, //
+								"/api/members/**"//
+						)//
+						.hasAuthority("MEMBER_UPDATE")//
 
 						// delete member
-						.requestMatchers(HttpMethod.DELETE, "/api/members/**")//
-						.hasAuthority("MEMBER_DELETE")
+						.requestMatchers(//
+								HttpMethod.DELETE, //
+								"/api/members/**"//
+						)//
+						.hasAuthority("MEMBER_DELETE")//
 
 						// BORROW / RETURN PERMISSIONS
 						// muon sach
-						.requestMatchers(HttpMethod.POST, "/api/borrow/**"//
-						).hasAuthority("BORROW_BOOK")
+						.requestMatchers(//
+								HttpMethod.POST, //
+								"/api/borrow/**"//
+						)//
+						.hasAuthority("BORROW_BOOK")//
 
 						// tra sach
-						.requestMatchers(HttpMethod.PUT, "/api/borrow/**"//
-						).hasAuthority("RETURN_BOOK")
-						// =========================
+						.requestMatchers(//
+								HttpMethod.PUT, //
+								"/api/borrow/**"//
+						)//
+						.hasAuthority("RETURN_BOOK")//
+
 						// MAINTENANCE
-						.requestMatchers("/api/system-config/**")//
-						.hasAuthority("SYSTEM_MAINTENANCE")
+						.requestMatchers(//
+								"/api/system-config/**"//
+						)//
+						.hasAuthority("SYSTEM_MAINTENANCE")//
 
 						// API KHÁC
-						// Tạm thời chỉ yêu cầu đăng nhập.
-						// Sau này Member/Borrow/Maintenance
-						// sẽ gắn permission riêng.
 						.anyRequest()//
 						.authenticated()//
 				)//
-//
+
 				// Không dùng form login mặc định của Spring
 				.formLogin(form -> form.disable())//
 
@@ -157,8 +177,11 @@ public class SecurityConfig {
 						jwtAuthencationFilter, //
 						UsernamePasswordAuthenticationFilter.class//
 				)//
+
 				.addFilterAfter(//
-						new MaintenanceModeFilter(systemConfigService), JwtAuthencationFilter.class);//
+						new MaintenanceModeFilter(systemConfigService), //
+						JwtAuthencationFilter.class//
+				);
 
 		return http.build();//
 	}
@@ -176,10 +199,7 @@ public class SecurityConfig {
 		// Frontend Vite
 		configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
 
-		configuration.setAllowedMethods(//
-				List.of(//
-						"GET", "POST", "PUT", //
-						"DELETE", "OPTIONS"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
 		configuration.setAllowedHeaders(List.of("*"));
 

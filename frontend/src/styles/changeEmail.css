@@ -1,0 +1,198 @@
+.change-email-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  background: #f5f7fb;
+  font-family: Arial, sans-serif;
+}
+
+.change-email-card {
+  width: 100%;
+  max-width: 624px;
+  background: white;
+  border-radius: 18px;
+  padding: 42px;
+  box-sizing: border-box;
+  box-shadow:
+    0 12px 35px
+    rgba(0, 0, 0, 0.08);
+}
+
+.change-email-header {
+  margin-bottom: 28px;
+}
+
+.change-email-header p {
+  margin: 0 0 10px;
+  color: #4f46e5;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.change-email-header h1 {
+  margin: 0 0 10px;
+  color: #111827;
+  font-size: 32px;
+}
+
+.change-email-header span {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.change-email-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.change-email-step {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.change-email-step.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.change-email-step span {
+  position: absolute;
+  top: 50px;
+  white-space: nowrap;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.change-email-line {
+  width: 100px;
+  height: 2px;
+  margin: 0 12px;
+  background: #e5e7eb;
+}
+
+.change-email-field {
+  margin-top: 34px;
+  margin-bottom: 22px;
+}
+
+.change-email-field label {
+  display: block;
+  margin-bottom: 9px;
+  color: #374151;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.change-email-field input {
+  width: 100%;
+  padding: 15px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  outline: none;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.change-email-field input:focus {
+  border-color: #4f46e5;
+}
+
+.change-email-button {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.change-email-button:hover {
+  background: #4338ca;
+}
+
+.change-email-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.change-email-secondary {
+  width: 100%;
+  padding: 13px;
+  margin-top: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.change-email-current {
+  margin-top: 35px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #374151;
+  font-size: 14px;
+}
+
+.change-email-current strong {
+  display: block;
+  margin-top: 5px;
+  color: #4f46e5;
+}
+
+.change-email-error,
+.change-email-success {
+  padding: 14px 16px;
+  border-radius: 9px;
+  margin-bottom: 18px;
+  font-size: 15px;
+}
+
+.change-email-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.change-email-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.change-email-back {
+  display: block;
+  margin-top: 24px;
+  text-align: center;
+  color: #4f46e5;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .change-email-page {
+    padding: 20px;
+  }
+
+  .change-email-card {
+    padding: 28px 22px;
+  }
+}

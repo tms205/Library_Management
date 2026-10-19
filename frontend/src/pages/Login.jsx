@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+
 import { login } from '../api/authApi';
 import '../styles/auth.css';
 
 function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+
+  const registeredEmail = searchParams.get('email') || '';
+  const registered = searchParams.get('registered') === 'true';
+
+  const [email, setEmail] = useState(registeredEmail);
   const [password, setPassword] = useState('');
 
   const [message, setMessage] = useState('');
@@ -28,15 +34,14 @@ function Login() {
         email: email,
         password: password,
       });
+
       localStorage.setItem('accessToken', response.data.accessToken);
 
-      navigate('/dashboard');
+      localStorage.setItem('refreshToken', response.data.refreshToken);
 
       console.log('Login response:', response.data);
 
-      localStorage.setItem('accessToken', response.data.accessToken);
-
-      setMessage('Đăng nhập thành công!');
+      navigate('/dashboard');
     } catch (error) {
       console.error(error);
 
@@ -59,12 +64,20 @@ function Login() {
 
         <h2>Đăng nhập</h2>
 
+        {registered && (
+          <p className="auth-message success">
+            Đăng ký thành công!
+            <br />
+            Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.
+          </p>
+        )}
+
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label>Email</label>
 
             <input
-              type="email"
+              type="text"
               placeholder="Nhập email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -82,7 +95,11 @@ function Login() {
             />
           </div>
 
-          {message && <p className="auth-message">{message}</p>}
+          <p className="auth-link" style={{ textAlign: 'right' }}>
+            <Link to="/forgot-password">Quên mật khẩu?</Link>
+          </p>
+
+          {message && <p className="auth-message error">{message}</p>}
 
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}

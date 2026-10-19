@@ -35,6 +35,8 @@ public class AuthService {
 
 	private final RefreshTokenService refreshTokenService;
 
+	private final SystemConfigService systemConfigService;
+
 	public AuthService(//
 			AccountRepository accountRepository, //
 			MemberRepository memberRepository, //
@@ -43,26 +45,46 @@ public class AuthService {
 			EmailVerificationService emailVerificationService, //
 			EmailService emailService, //
 			PermissionGroupRepository permissionGroupRepository, //
-			RefreshTokenService refreshTokenService) {
+			RefreshTokenService refreshTokenService, //
+			SystemConfigService systemConfigService//
+	) {
 
 		this.accountRepository = accountRepository;
 		this.memberRepository = memberRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
+
 		this.emailVerificationService = emailVerificationService;
 		this.emailService = emailService;
+
 		this.permissionGroupRepository = permissionGroupRepository;
+
 		this.refreshTokenService = refreshTokenService;
+
+		this.systemConfigService = systemConfigService;
 	}
+
+	// =========================
+	// REGISTER
+	// =========================
 
 	@Transactional
 	public void register(RegisterRequest request) {
 
+		// Neu dang bao tri
+		// khong cho tao tai khoan moi
+		if (systemConfigService.isMaintenanceMode()) {
+
+			throw new BadRequestException("Hệ thống đang bảo trì. " + "Hiện tại không thể đăng ký tài khoản mới!");
+		}
+
 		if (accountRepository.existsByEmail(request.getEmail())) {
+
 			throw new ConflictException("Email đã tồn tại!");
 		}
 
-		Account account = new Account();
+		Account account = //
+				new Account();
 
 		account.setEmail(request.getEmail());
 
@@ -76,21 +98,18 @@ public class AuthService {
 		account.setEnabled(false);
 
 		/*
-		 * Tìm nhóm quyền mặc định dành cho user mới.
+		 * Tìm USER_GROUP mặc định cho tài khoản mới.
 		 */
-		PermissionGroup userGroup = permissionGroupRepository.findByName("USER_GROUP").orElseThrow(() -> //
-		new IllegalStateException(//
-				"Không tìm thấy USER_GROUP trong database!")//
-		);
+		PermissionGroup userGroup = //
+				permissionGroupRepository.findByName("USER_GROUP").orElseThrow(() -> //
+				new IllegalStateException("Không tìm thấy USER_GROUP trong database!"));
 
-		/*
-		 * Gán account mới vào USER_GROUP.
-		 */
 		account.getPermissionGroups().add(userGroup);
 
 		accountRepository.save(account);
 
-		Member member = new Member();
+		Member member = //
+				new Member();
 
 		member.setFullName(request.getFullName());
 
@@ -104,48 +123,74 @@ public class AuthService {
 
 		memberRepository.save(member);
 
-		String token = emailVerificationService.createVerificationToken(account);
+		String token = //
+				emailVerificationService.createVerificationToken(account);
 
 		emailService.sendVerificationEmail(account.getEmail(), token);
 	}
 
+	// =========================
+	// LOGIN
+	// =========================
+
 	@Transactional
 	public LoginResponse login(LoginRequest request) {
 
-		Account account = accountRepository.findByEmail(request.getEmail())
-				.orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không đúng!"));
+		Account account = //
+				accountRepository.findByEmail(request.getEmail()).orElseThrow(() -> //
+				new UnauthorizedException("Email hoặc mật khẩu không đúng!"));
 
-		boolean passwordMatches = passwordEncoder.matches(request.getPassword(), account.getPassword());
+		boolean passwordMatches = //
+				passwordEncoder.matches(request.getPassword(), account.getPassword());
 
 		if (!passwordMatches) {
+
 			throw new UnauthorizedException("Email hoặc mật khẩu không đúng!");
 		}
 
 		if (!account.getEnabled()) {
+
 			throw new UnauthorizedException("Tài khoản chưa được xác minh email!");
 		}
 
-		String accessToken = jwtService.generateToken(account);
+		// =========================
+		// MAINTENANCE
+		// =========================
 
-		String refreshToken = refreshTokenService//
-				.createRefreshToken(account)//
-				.getToken();
+		if (systemConfigService.isMaintenanceMode()) {
 
-		return new LoginResponse(//
-				accessToken, //
-				refreshToken, //
-				"Bearer");
+			boolean isAdmin = //
+					isAdminGroup(account);
+
+			if (!isAdmin) {
+
+				throw new UnauthorizedException("Hệ thống đang bảo trì. " + "Chỉ quản trị viên được phép đăng nhập!");
+			}
+		}
+
+		String accessToken = //
+				jwtService.generateToken(account);
+
+		String refreshToken = //
+				refreshTokenService.createRefreshToken(account).getToken();
+
+		return new LoginResponse(accessToken, refreshToken, "Bearer");
 	}
+
+	// =========================
+	// CHANGE PASSWORD
+	// =========================
 
 	@Transactional
 	public void changePassword(String email, String oldPassword, String newPassword) {
 
-		Account account = accountRepository.findByEmail(email)
-				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản!"));
+		Account account = //
+				accountRepository.findByEmail(email).orElseThrow(() -> //
+				new BadRequestException("Không tìm thấy tài khoản!"));
 
 		if (!passwordEncoder.matches(oldPassword, account.getPassword())) {
 
-			throw new BadRequestException("Mật khẩu hiện tại không chính xác!");
+			throw new BadRequestException("Mật khẩu hiện tại không chính xác!");
 		}
 
 		if (passwordEncoder.matches(newPassword, account.getPassword())) {
@@ -158,30 +203,55 @@ public class AuthService {
 		accountRepository.save(account);
 	}
 
+	// =========================
+	// REFRESH TOKEN
+	// =========================
+
 	@Transactional(readOnly = true)
 	public LoginResponse refreshToken(String token) {
 
 		RefreshToken refreshToken = //
 				refreshTokenService.verifyRefreshToken(token);
 
-		Account account = refreshToken.getAccount();
+		Account account = //
+				refreshToken.getAccount();
+
+		if (systemConfigService.isMaintenanceMode()) {
+
+			if (!isAdminGroup(account)) {
+
+				throw new UnauthorizedException("Hệ thống đang bảo trì. " + "Vui lòng thử lại sau!");
+			}
+		}
 
 		String newAccessToken = //
 				jwtService.generateToken(account);
 
-		return new LoginResponse(//
-				newAccessToken, //
-				refreshToken.getToken(), //
-				"Bearer");
+		return new LoginResponse(newAccessToken, refreshToken.getToken(), "Bearer");
 	}
+
+	// =========================
+	// LOGOUT
+	// =========================
 
 	@Transactional
 	public void logout(String email) {
 
-		Account account = accountRepository.findByEmail(email)//
-				.orElseThrow(() -> new UnauthorizedException(//
-						"Không tìm thấy tài khoản!"));//
+		Account account = //
+				accountRepository.findByEmail(email).orElseThrow(() -> //
+				new UnauthorizedException("Không tìm thấy tài khoản!"));
 
 		refreshTokenService.deleteByAccountId(account.getId());
+	}
+
+	// =========================
+	// CHECK ADMIN GROUP
+	// =========================
+
+	private boolean isAdminGroup(Account account) {
+
+		return account.getPermissionGroups().stream().anyMatch(group -> //
+		"ADMIN_GROUP".equals(group.getName())//
+		);
 	}
 }

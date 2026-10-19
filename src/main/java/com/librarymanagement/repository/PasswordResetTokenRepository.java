@@ -9,7 +9,9 @@ import com.librarymanagement.entity.PasswordResetToken;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
-	Optional<PasswordResetToken> findByToken(String token);
-
 	Optional<PasswordResetToken> findByAccount(Account account);
+
+	Optional<PasswordResetToken> findByAccount_IdAndOtp(Long accountId, String otp);
+
+	void deleteByAccount_Id(Long accountId);
 }

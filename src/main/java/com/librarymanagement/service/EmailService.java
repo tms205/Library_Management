@@ -14,8 +14,11 @@ public class EmailService {
 
 	// gui link nhan ma xac thuc
 	public void sendVerificationEmail(String email, String token) {
-		String verificationLink = "http://localhost:8080/auth/verify-email?token=" + token;
-
+		// String verificationLink = "http://localhost:8080/auth/verify-email?token=" +
+		// token;
+		// trước để cho backend luôn mà không có giao diện nên đổi sang frontend
+		String verificationLink = //
+				"http://localhost:5173/verify-email?token=" + token;
 		SimpleMailMessage message = new SimpleMailMessage();
 
 		message.setTo(email);
@@ -29,15 +32,14 @@ public class EmailService {
 	}
 
 	// gui ma xac thuc
-	public void sendPasswordResetEmail(String email, String token) {
+	public void sendPasswordResetOtp(String email, String otp) {
+
 		SimpleMailMessage message = new SimpleMailMessage();
 
 		message.setTo(email);
+		message.setSubject("Mã OTP đặt lại mật khẩu");
 
-		message.setSubject("Đặt lại mật khẩu Library Management");
-
-		message.setText(
-				"Xin chào!\n\n" + "Yêu cầu đặt lại mật khẩu\n\n" + "Mã reset password của bạn là:\n" + token);
+		message.setText("Mã OTP đặt lại mật khẩu của bạn là: " + otp + "\n\nMã OTP có hiệu lực trong 5 phút.");
 
 		mailSender.send(message);
 	}
@@ -51,8 +53,11 @@ public class EmailService {
 
 		message.setSubject("Xác minh thay đổi email - Library Management");
 
-		message.setText("Xin chào bạn!n\n\"" + "Mã xác minh email của bạn là:\n\n" + code
-				+ "\n\nMã có hiệu lực trong 15 phút!");
+		message.setText("Xin chào bạn!\n\n"//
+				+ "Mã xác minh email của bạn là:\n\n"//
+				+ code//
+				+ "\n\nMã có hiệu lực trong 15 phút!"//
+		);
 
 		mailSender.send(message);
 	}

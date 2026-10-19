@@ -1,7 +1,12 @@
 package com.librarymanagement.controller;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -11,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.librarymanagement.dto.request.BorrowBookRequest;
 import com.librarymanagement.dto.response.BorrowResponse;
-import com.librarymanagement.entity.BorrowRecord;
 import com.librarymanagement.service.BorrowService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,37 +29,64 @@ public class BorrowController {
 	private final BorrowService borrowService;
 
 	public BorrowController(BorrowService borrowService) {
+
 		this.borrowService = borrowService;
 	}
 
-	// muon sach
+	// =========================
+	// MUON NHIEU SACH
+	// =========================
+
 	@PostMapping
-	public ResponseEntity<BorrowResponse> borrowBook(@Valid @RequestBody BorrowBookRequest request) {
+	public ResponseEntity<Map<String, Object>> borrowBooks(Authentication authentication,
+			@Valid @RequestBody BorrowBookRequest request) {
 
-		BorrowRecord record = borrowService.borrowBook(request);
+		// Email lay tu JWT
+		String email = //
+				authentication.getName();
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(record));
+		List<BorrowResponse> borrowedBooks = //
+				borrowService.borrowBooks(email, request);
+
+		Map<String, Object> response = //
+				Map.of("message", "Mượn sách thành công!",
+
+						"total", borrowedBooks.size(),
+
+						"items", borrowedBooks);
+
+		return ResponseEntity//
+				.status(HttpStatus.CREATED)//
+				.body(response);
 	}
 
-	// tra sach
-	@PutMapping("/{id}/return")
-	public BorrowResponse returnBook(@PathVariable Long id) {
+	// =========================
+	// SACH TOI DANG MUON
+	// =========================
 
-		BorrowRecord record = borrowService.returnBook(id);
+	@GetMapping("/me")
+	public ResponseEntity<List<BorrowResponse>> getMyBorrowedBooks(Authentication authentication) {
 
-		return toResponse(record);
+		String email = //
+				authentication.getName();
+
+		List<BorrowResponse> response = //
+				borrowService.getBorrowedBooksByEmail(email);
+
+		return ResponseEntity.ok(response);
 	}
 
-	// chuyen BorrowRecord thanh BorrowResponse
-	private BorrowResponse toResponse(BorrowRecord record) {
+	// =========================
+	// TRA SACH CUA TOI
+	// =========================
 
-		return new BorrowResponse(record.getId(), //
-				record.getMember().getId(), //
-				record.getMember().getFullName(), //
-				record.getBook().getId(), //
-				record.getBook().getTitle(), //
-				record.getBorrowDate(), //
-				record.getReturnDate(), //
-				record.getStatus());
+	@PutMapping("/{borrowRecordId}/return")
+	public ResponseEntity<BorrowResponse> returnBook(Authentication authentication, @PathVariable Long borrowRecordId) {
+
+		String email = authentication.getName();
+
+		BorrowResponse response = borrowService.returnBook(email, borrowRecordId);
+
+		return ResponseEntity.ok(response);
 	}
 }

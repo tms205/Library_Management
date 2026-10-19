@@ -3,6 +3,9 @@ package com.librarymanagement.repository;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import com.librarymanagement.entity.Book;
@@ -15,18 +18,14 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-//criteria dùng để xây query cho từng phần
-//criteriabuilder là công cụ xây câu query
-//criteriaQuery<book> tức câu query sẽ trả về book
-//root<book> đại diện cho bảng/entity
-//predicate đại diện cho 1 lệnh where
 
 @Repository
 public class BookCriteriaRepository {
+
 	@PersistenceContext
 	private EntityManager entityManager;
 
-	public List<Book> search(String title, //
+	public Page<Book> search(String title, //
 			String isbn, //
 			int page, //
 			int size, //
@@ -34,40 +33,62 @@ public class BookCriteriaRepository {
 			String direction, //
 			String sortBy2, //
 			String direction2) {//
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
 
-		CriteriaQuery<Book> criteriaQuery = criteriaBuilder.createQuery(Book.class);
+		CriteriaBuilder criteriaBuilder = //
+				entityManager.getCriteriaBuilder();
 
-		Root<Book> root = criteriaQuery.from(Book.class);
+		// =========================
+		// 1. QUERY LAY DANH SACH SACH
+		// =========================
 
-		List<Predicate> predicates = new ArrayList<>();
+		CriteriaQuery<Book> criteriaQuery = //
+				criteriaBuilder.createQuery(Book.class);
+
+		Root<Book> root = //
+				criteriaQuery.from(Book.class);
+
+		List<Predicate> predicates = //
+				new ArrayList<>();
 
 		if (title != null && !title.isBlank()) {
-			Predicate titlePredicate = criteriaBuilder.like(//
-					criteriaBuilder.lower(//
-							root.get("title")),
-					"%" + title.toLowerCase() + "%");
+
+			Predicate titlePredicate = //
+					criteriaBuilder.like(//
+							criteriaBuilder.lower(//
+									root.get("title")), //
+							"%" + title.toLowerCase() + "%"//
+					);
+
 			predicates.add(titlePredicate);
 		}
 
 		if (isbn != null && !isbn.isBlank()) {
-			Predicate isbnPredicate = criteriaBuilder.equal(//
-					root.get("isbn"), //
-					isbn);
+
+			Predicate isbnPredicate = //
+					criteriaBuilder.equal(//
+							root.get("isbn"), //
+							isbn//
+					);
 
 			predicates.add(isbnPredicate);
-
 		}
 
-		criteriaQuery.where(predicates.toArray(new Predicate[0]));
+		criteriaQuery.where(//
+				predicates.toArray(new Predicate[0])//
+		);
 
-		// sort cứng
-		// criteriaQuery.orderBy(criteriaBuilder.asc(root.get("title")),
-		// criteriaBuilder.desc(root.get("publishedDate")));
+		// =========================
+		// 2. SORT
+		// =========================
 
-		// Chỉ cho phép sort theo các field này
-		List<String> allowedSortFields = List.of("title", "isbn", "quantity", "publishedDate");
-		// không sort theo field thì default cho title
+		List<String> allowedSortFields = //
+				List.of(//
+						"title", //
+						"isbn", //
+						"quantity", //
+						"publishedDate"//
+				);
+
 		if (!allowedSortFields.contains(sortBy)) {
 			sortBy = "title";
 		}
@@ -76,24 +97,95 @@ public class BookCriteriaRepository {
 			sortBy2 = "publishedDate";
 		}
 
-		// multi condition
-		Order order1 = "desc".equalsIgnoreCase(direction) ? criteriaBuilder.desc(root.get(sortBy))
-				: criteriaBuilder.asc(root.get(sortBy));
+		Order order1 = //
+				"desc".equalsIgnoreCase(direction) //
+						? criteriaBuilder.desc(//
+								root.get(sortBy)) //
+						: criteriaBuilder.asc(//
+								root.get(sortBy));
 
-		Order order2 = "desc".equalsIgnoreCase(direction2) ? criteriaBuilder.desc(root.get(sortBy2))
-				: criteriaBuilder.asc(root.get(sortBy2));
+		Order order2 = //
+				"desc".equalsIgnoreCase(direction2) //
+						? criteriaBuilder.desc(//
+								root.get(sortBy2)) //
+						: criteriaBuilder.asc(//
+								root.get(sortBy2));
 
 		criteriaQuery.orderBy(order1, order2);
 
-		criteriaQuery.orderBy(order1, order2);
+		// =========================
+		// 3. PHAN TRANG
+		// =========================
 
-		TypedQuery<Book> query = entityManager.createQuery(criteriaQuery);
+		TypedQuery<Book> query = //
+				entityManager.createQuery(criteriaQuery);
 
 		query.setFirstResult(page * size);
 
-		query.setMaxResults(size);// lấy 10 record kế tiếp
+		query.setMaxResults(size);
 
-		return query.getResultList();
+		List<Book> books = //
+				query.getResultList();
+
+		// =========================
+		// 4. COUNT QUERY
+		// DEM TONG SO SACH
+		// =========================
+
+		CriteriaQuery<Long> countQuery = //
+				criteriaBuilder.createQuery(Long.class);
+
+		Root<Book> countRoot = //
+				countQuery.from(Book.class);
+
+		List<Predicate> countPredicates = //
+				new ArrayList<>();
+
+		if (title != null && !title.isBlank()) {
+
+			Predicate titlePredicate = //
+					criteriaBuilder.like(//
+							criteriaBuilder.lower(//
+									countRoot.get("title")), //
+							"%" + title.toLowerCase() + "%"//
+					);
+
+			countPredicates.add(titlePredicate);
+		}
+
+		if (isbn != null && !isbn.isBlank()) {
+
+			Predicate isbnPredicate = //
+					criteriaBuilder.equal(//
+							countRoot.get("isbn"), //
+							isbn//
+					);
+
+			countPredicates.add(isbnPredicate);
+		}
+
+		countQuery.select(//
+				criteriaBuilder.count(countRoot)//
+		);
+
+		countQuery.where(//
+				countPredicates.toArray(//
+						new Predicate[0])//
+		);
+
+		Long total = //
+				entityManager//
+						.createQuery(countQuery)//
+						.getSingleResult();
+
+		// =========================
+		// 5. TRA VE PAGE
+		// =========================
+
+		return new PageImpl<>(//
+				books, //
+				PageRequest.of(page, size), //
+				total//
+		);
 	}
-
 }

@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { register } from '../api/authApi';
 import '../styles/auth.css';
 
 function Register() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +18,7 @@ function Register() {
   });
 
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
@@ -26,10 +29,12 @@ function Register() {
       [name]: value,
     });
   };
+
   const handleRegister = async (event) => {
     event.preventDefault();
 
     setMessage('');
+    setMessageType('');
 
     if (
       !formData.email ||
@@ -41,18 +46,20 @@ function Register() {
       !formData.address
     ) {
       setMessage('Vui lòng nhập đầy đủ thông tin!');
+      setMessageType('error');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setMessage('Mật khẩu xác nhận không khớp!');
+      setMessageType('error');
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await register({
+      await register({
         email: formData.email,
         password: formData.password,
         fullName: formData.fullName,
@@ -61,13 +68,19 @@ function Register() {
         address: formData.address,
       });
 
-      console.log('Register response:', response.data);
+      setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
 
-      setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản.');
+      setMessageType('success');
+
+      setTimeout(() => {
+        navigate(`/login?email=${encodeURIComponent(formData.email)}&registered=true`);
+      }, 1800);
     } catch (error) {
       console.error(error);
 
       const data = error.response?.data;
+
+      setMessageType('error');
 
       if (data?.message) {
         setMessage(data.message);
@@ -84,9 +97,8 @@ function Register() {
   };
 
   return (
-    <div className="auth-page">
+    <div className="auth-page register-page">
       <div className="auth-box">
-
         <h1>Library Management</h1>
 
         <p className="auth-subtitle">Hệ thống quản lý thư viện</p>
@@ -177,7 +189,7 @@ function Register() {
             />
           </div>
 
-          {message && <p className="auth-message">{message}</p>}
+          {message && <p className={`auth-message ${messageType}`}>{message}</p>}
 
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Đang đăng ký...' : 'Đăng ký'}

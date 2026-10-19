@@ -1,0 +1,21 @@
+title,isbn,quantity,publishedDate
+Java Fundamentals,9000000000500,12,2022-01-15
+Spring Boot Basics,9000000000501,10,2022-03-20
+Clean Code Practice,9000000000502,8,2021-11-05
+Effective Java Guide,9000000000503,9,2020-08-12
+JPA and Hibernate,9000000000504,7,2023-02-18
+REST API Design,9000000000505,11,2023-05-09
+MySQL Essentials,9000000000506,15,2021-06-25
+Database Design,9000000000507,13,2020-10-14
+Microservices with Spring,9000000000508,6,2024-01-22
+Spring Security in Action,9000000000509,8,2024-03-11
+Docker for Developers,9000000000510,10,2023-07-19
+Git and GitHub Workflow,9000000000511,14,2022-09-30
+React for Beginners,9000000000512,12,2024-05-06
+Frontend Development,9000000000513,9,2023-12-01
+Java Design Patterns,9000000000514,7,2021-04-17
+Data Structures in Java,9000000000515,16,2020-02-28
+Algorithms Made Simple,9000000000516,11,2019-09-13
+Cloud Computing Basics,9000000000517,8,2024-06-21
+Linux for Developers,9000000000518,10,2022-12-08
+Software Testing Essentials,9000000000519,13,2023-08-26

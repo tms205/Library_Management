@@ -5,11 +5,14 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +51,7 @@ public class BookService {
 
 	// tự xây dưng query bằng CriteriaBuilder, Predicate,...: Criteria API
 	@Transactional(readOnly = true)
-	public List<Book> search(String title, //
+	public Page<Book> search(String title, //
 			String isbn, //
 			int page, //
 			int size, //
@@ -136,21 +139,25 @@ public class BookService {
 	// import book from csv
 	@Transactional
 	public int importBooks(MultipartFile file) {
+
 		if (file.isEmpty()) {
-			throw new BadRequestException("File không được để trống!");
+			throw new BadRequestException("File không được để trống!");
 		}
 
 		String fileName = file.getOriginalFilename();
 
 		if (fileName == null || !fileName.toLowerCase().endsWith(".csv")) {
-			throw new BadRequestException("Chỉ hỗ trợ file CSV!");
+
+			throw new BadRequestException("Chỉ hỗ trợ file CSV!");
 		}
 
 		if (file.getSize() >= 5 * 1024 * 1024) {
-			throw new BadRequestException("File phải nhỏ hơn 5MB!");
+			throw new BadRequestException("File phải nhỏ hơn 5MB!");
 		}
 
 		List<Book> books = new ArrayList<>();
+
+		Set<String> isbnInFile = new HashSet<>();
 
 		try (BufferedReader reader = //
 				new BufferedReader(//
@@ -159,31 +166,50 @@ public class BookService {
 								StandardCharsets.UTF_8//
 						)//
 				); //
+
 				CSVParser parser = CSVFormat.DEFAULT//
 						.builder()//
 						.setHeader()//
 						.setSkipHeaderRecord(true)//
-						.get().parse(reader)
+						.get()//
+						.parse(reader)) {
 
-		) {
 			for (CSVRecord record : parser) {
+
 				String title = record.get("title").trim();
+
 				String isbn = record.get("isbn").trim();
+
 				int quantity = Integer.parseInt(record.get("quantity").trim());
-				LocalDate publishedDate = //
-						LocalDate.parse(record.get("publishedDate").trim());
+
+				LocalDate publishedDate = LocalDate.parse(record.get("publishedDate").trim());
 
 				if (title.isBlank()) {
-					throw new BadRequestException("Tiêu đề không được để trống!");
-				}
-				if (isbn.isBlank()) {
-					throw new BadRequestException("ISBN không được để trống!");
-				}
-				if (quantity < 0) {
-					throw new BadRequestException("Số lượng phải lớn hơn hoặc bằng 0!");
+					throw new BadRequestException("Tiêu đề không được để trống!");
 				}
 
+				if (isbn.isBlank()) {
+					throw new BadRequestException("ISBN không được để trống!");
+				}
+
+				if (quantity < 0) {
+					throw new BadRequestException("Số lượng phải lớn hơn hoặc bằng 0!");
+				}
+
+				// Kiểm tra trùng ISBN trong chính file CSV
+				if (isbnInFile.contains(isbn)) {
+					throw new BadRequestException("ISBN " + isbn + " bị trùng trong file CSV!");
+				}
+
+				// Kiểm tra ISBN đã tồn tại trong database
+				if (bookRepository.existsByIsbn(isbn)) {
+					throw new BadRequestException("ISBN " + isbn + " đã tồn tại trong hệ thống!");
+				}
+
+				isbnInFile.add(isbn);
+
 				Book book = new Book();
+
 				book.setTitle(title);
 				book.setIsbn(isbn);
 				book.setQuantity(quantity);
@@ -191,16 +217,20 @@ public class BookService {
 
 				books.add(book);
 			}
+
 			bookRepository.saveAll(books);
+
 			return books.size();
+
 		} catch (BadRequestException exception) {
 
 			throw exception;
 
 		} catch (Exception exception) {
+
 			exception.printStackTrace();
 
-			throw new BadRequestException("Lỗi import CSV: " + exception.getMessage());
+			throw new BadRequestException("Import CSV thất bại. Vui lòng kiểm tra lại dữ liệu trong file!");
 		}
 	}
 }

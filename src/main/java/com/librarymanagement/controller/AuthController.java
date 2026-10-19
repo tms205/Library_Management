@@ -87,15 +87,17 @@ public class AuthController {
 
 	@PostMapping("/forgot-password")
 	public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+
 		passwordResetService.forgotPassword(request.getEmail());
 
-		return ResponseEntity.ok("Đã gửi hướng dẫn đặt lại password qua email!");
+		return ResponseEntity.ok("Mã OTP đã được gửi tới email!");
 	}
 
 	@PostMapping("/reset-password")
 	public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
 		passwordResetService.resetPassword(//
-				request.getToken(), //
+				request.getEmail(), //
+				request.getOtp(), //
 				request.getNewPassword());//
 
 		return ResponseEntity.ok("Đặt lại password thành công!");

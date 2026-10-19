@@ -14,6 +14,8 @@ import com.librarymanagement.entity.Book;
 //findAll(Specification<T> spec, Pageable pageable), ...
 public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificationExecutor<Book> {
 
+	boolean existsByIsbn(String isbn);
+
 	List<Book> findByTitleContainingIgnoreCase(String title);
 	// findby tìm theo
 	// title : filed title trong book

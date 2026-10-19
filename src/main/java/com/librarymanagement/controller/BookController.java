@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,9 +19,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.librarymanagement.dto.response.BookResponse;
 import com.librarymanagement.dto.request.CreateBookRequest;
 import com.librarymanagement.dto.request.UpdateBookRequest;
+import com.librarymanagement.dto.response.BookResponse;
 import com.librarymanagement.entity.Book;
 import com.librarymanagement.service.BookService;
 
@@ -39,7 +40,7 @@ public class BookController {
 	}
 
 	@GetMapping("/search")
-	public ResponseEntity<List<Book>> searchBooks(//
+	public ResponseEntity<Page<BookResponse>> searchBooks(//
 			@RequestParam(required = false) String title, //
 			@RequestParam(required = false) String isbn, //
 			@RequestParam(defaultValue = "0") int page, //
@@ -47,15 +48,23 @@ public class BookController {
 			@RequestParam(defaultValue = "title") String sortBy, //
 			@RequestParam(defaultValue = "asc") String direction, //
 			@RequestParam(defaultValue = "publishedDate") String sortBy2, //
-			@RequestParam(defaultValue = "desc") String direction2) {//
-		return ResponseEntity.ok(bookService.search(title, //
+			@RequestParam(defaultValue = "desc") String direction2//
+	) {
+
+		Page<Book> books = bookService.search(//
+				title, //
 				isbn, //
 				page, //
 				Math.min(size, 10), //
 				sortBy, //
 				direction, //
 				sortBy2, //
-				direction2));//
+				direction2//
+		);
+
+		Page<BookResponse> response = books.map(this::toResponse);
+
+		return ResponseEntity.ok(response);
 	}
 
 	@GetMapping("/search-spec")
