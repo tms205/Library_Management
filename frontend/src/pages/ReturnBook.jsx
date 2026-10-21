@@ -1,161 +1,72 @@
 import { useEffect, useState } from 'react';
-
-import { Link } from 'react-router-dom';
-
-import { getMyBorrowedBooks, returnBook } from '../api/borrowApi';
+import { getMyBorrowedBooks, requestReturn } from '../api/borrowApi';
+import { hasPermission } from '../utils/auth';
+import StatusBadge from '../components/StatusBadge';
 
 import '../styles/return.css';
 
 function ReturnBook() {
+  const canReturn = hasPermission('RETURN_BOOK');
+
   const [borrowedBooks, setBorrowedBooks] = useState([]);
-
-  const [selectedIds, setSelectedIds] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
-  const [loadingReturn, setLoadingReturn] = useState(false);
-
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState('');
-
   const [messageType, setMessageType] = useState('success');
 
-  // =========================
-  // LOAD SACH CUA TOI
-  // =========================
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadBorrowedBooks = async () => {
-      try {
-        const response = await getMyBorrowedBooks();
-
-        if (cancelled) {
-          return;
-        }
-
-        setBorrowedBooks(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        console.error(error);
-
-        setBorrowedBooks([]);
-
-        setMessageType('error');
-
-        setMessage(
-          error.response?.data?.message ||
-            error.response?.data?.error ||
-            'Không thể tải danh sách sách đang mượn!',
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadBorrowedBooks();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // =========================
-  // CHON SACH
-  // =========================
-
-  const toggleBorrowRecord = (borrowRecordId) => {
-    setSelectedIds((current) => {
-      if (current.includes(borrowRecordId)) {
-        return current.filter((id) => id !== borrowRecordId);
-      }
-
-      return [...current, borrowRecordId];
-    });
-  };
-
-  // =========================
-  // LOAD LAI
-  // =========================
-
-  const reloadBooks = async () => {
-    const response = await getMyBorrowedBooks();
-
-    setBorrowedBooks(Array.isArray(response.data) ? response.data : []);
-  };
-
-  // =========================
-  // TRA NHIEU SACH
-  // =========================
-
-  const handleReturn = async () => {
-    if (selectedIds.length === 0) {
-      setMessageType('error');
-
-      setMessage('Vui lòng chọn ít nhất 1 cuốn sách cần trả!');
-
-      return;
-    }
-
+  const loadBorrowedBooks = async () => {
     try {
-      setLoadingReturn(true);
-
-      setMessage('');
-
-      const results = await Promise.allSettled(
-        selectedIds.map((borrowRecordId) => returnBook(borrowRecordId)),
-      );
-
-      const successCount = results.filter((result) => result.status === 'fulfilled').length;
-
-      const failedCount = results.length - successCount;
-
-      if (failedCount === 0) {
-        setMessageType('success');
-
-        setMessage(`Trả thành công ${successCount} cuốn sách!`);
-      } else {
-        setMessageType('error');
-
-        setMessage(`Đã trả ${successCount} sách, ${failedCount} sách thất bại.`);
-      }
-
-      setSelectedIds([]);
-
-      await reloadBooks();
+      setLoading(true);
+      const response = await getMyBorrowedBooks();
+      setBorrowedBooks(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(error);
-
+      setBorrowedBooks([]);
       setMessageType('error');
-
       setMessage(
-        error.response?.data?.message || error.response?.data?.error || 'Không thể trả sách!',
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Không thể tải danh sách sách của bạn!',
       );
     } finally {
-      setLoadingReturn(false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBorrowedBooks();
+  }, []);
+
+  const handleRequestReturn = async (borrowRecordId) => {
+    try {
+      setActionLoadingId(borrowRecordId);
+      setMessage('');
+      await requestReturn(borrowRecordId);
+      setMessageType('success');
+      setMessage('Gửi yêu cầu trả sách thành công! Vui lòng chờ thủ thư thư viện xác nhận.');
+      await loadBorrowedBooks();
+    } catch (error) {
+      console.error(error);
+      setMessageType('error');
+      setMessage(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Không thể gửi yêu cầu trả sách!',
+      );
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   return (
-    <main className="return-page">
+    <div className="return-page">
       <div className="return-page-wrapper">
         <header className="return-page-header">
           <div>
-            <div className="return-page-pretitle">Library / Return</div>
-
-            <h1>Trả sách</h1>
-
-            <p>Danh sách sách đang mượn của tài khoản hiện tại.</p>
+            <div className="return-page-pretitle">Library / My Books</div>
+            <h1>Sách của tôi</h1>
+            <p>Theo dõi tiến trình phê duyệt, sách đang mượn và gửi yêu cầu hoàn trả sách.</p>
           </div>
-
-          <Link to="/dashboard" className="return-btn return-btn-home">
-            ← Trang chủ
-          </Link>
         </header>
 
         {message && (
@@ -165,10 +76,8 @@ function ReturnBook() {
             }`}
           >
             <span className="return-alert-dot" />
-
             <span>{message}</span>
-
-            <button type="button" onClick={() => setMessage('')}>
+            <button type="button" onClick={() => setMessage('')} aria-label="Đóng thông báo">
               ×
             </button>
           </div>
@@ -177,107 +86,90 @@ function ReturnBook() {
         <section className="return-card">
           <div className="return-card-header">
             <div>
-              <h2>Sách đang mượn</h2>
-
-              <p>Hệ thống tự lấy member từ tài khoản đang đăng nhập.</p>
+              <h2>Lịch sử mượn & trả sách</h2>
+              <p>Danh sách toàn bộ các yêu cầu mượn sách liên kết với tài khoản của bạn.</p>
             </div>
 
-            <div className="return-card-badge">{borrowedBooks.length} BORROWED</div>
+            <div className="return-card-badge">{borrowedBooks.length} BẢN GHI</div>
           </div>
 
           <div className="return-toolbar">
             <button
               type="button"
               className="return-btn return-btn-outline"
-              disabled={borrowedBooks.length === 0}
-              onClick={() => setSelectedIds(borrowedBooks.map((item) => item.id))}
+              disabled={loading}
+              onClick={loadBorrowedBooks}
             >
-              Chọn tất cả
-            </button>
-
-            <button
-              type="button"
-              className="return-btn return-btn-outline"
-              disabled={selectedIds.length === 0}
-              onClick={() => setSelectedIds([])}
-            >
-              Bỏ chọn tất cả
-            </button>
-
-            <button type="button" className="return-btn return-btn-outline" onClick={reloadBooks}>
-              Tải lại
+              <span>↻</span> Tải lại danh sách
             </button>
           </div>
 
           {loading ? (
-            <div className="return-empty">Đang tải dữ liệu...</div>
+            <div className="return-empty">
+              <span className="gt-spinner" style={{ marginRight: '8px' }} />
+              Đang tải danh sách sách mượn...
+            </div>
           ) : borrowedBooks.length === 0 ? (
-            <div className="return-empty">Bạn hiện không có sách đang mượn.</div>
+            <div className="return-empty" style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>📭</div>
+              <strong style={{ display: 'block', fontSize: '16px', color: '#1e293b', marginBottom: '6px' }}>
+                Bạn chưa có yêu cầu mượn sách nào
+              </strong>
+              <span style={{ fontSize: '14px', color: '#64748b' }}>
+                Hãy vào mục <strong>Mượn sách</strong> để chọn các cuốn sách yêu thích từ thư viện.
+              </span>
+            </div>
           ) : (
             <div className="return-table-wrapper">
               <table className="return-table">
                 <thead>
                   <tr>
-                    <th>Chọn</th>
-                    <th>Borrow ID</th>
+                    <th>Mã phiếu</th>
                     <th>Book ID</th>
                     <th>Tên sách</th>
                     <th>Ngày mượn</th>
+                    <th>Ngày trả</th>
                     <th>Trạng thái</th>
+                    <th style={{ textAlign: 'center' }}>Thao tác</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {borrowedBooks.map((item) => {
-                    const selected = selectedIds.includes(item.id);
-
-                    return (
-                      <tr key={item.id} className={selected ? 'return-row-selected' : ''}>
-                        <td>
-                          <input
-                            className="return-checkbox"
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => toggleBorrowRecord(item.id)}
-                          />
-                        </td>
-
-                        <td className="return-mono">#{item.id}</td>
-
-                        <td className="return-mono">#{item.bookId}</td>
-
-                        <td className="return-book-name">{item.bookTitle}</td>
-
-                        <td>{item.borrowDate || '—'}</td>
-
-                        <td>
-                          <span className="return-status">Đang mượn</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {borrowedBooks.map((item) => (
+                    <tr key={item.id}>
+                      <td className="return-mono">#{item.id}</td>
+                      <td className="return-mono">#{item.bookId}</td>
+                      <td className="return-book-name">{item.bookTitle}</td>
+                      <td>{item.borrowDate || '—'}</td>
+                      <td>{item.returnDate || '—'}</td>
+                      <td>
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {/* Chỉ hiện nút Yêu cầu trả khi sách đang ở trạng thái BORROWED và user có quyền RETURN_BOOK */}
+                        {item.status === 'BORROWED' && canReturn ? (
+                          <button
+                            type="button"
+                            className="return-btn return-btn-primary"
+                            style={{ padding: '6px 14px', fontSize: '13px' }}
+                            disabled={actionLoadingId === item.id}
+                            onClick={() => handleRequestReturn(item.id)}
+                          >
+                            {actionLoadingId === item.id ? 'Đang gửi...' : 'Yêu cầu trả'}
+                          </button>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
-
-          <div className="return-card-footer">
-            <span>
-              Đã chọn <strong>{selectedIds.length}</strong> sách
-            </span>
-
-            <button
-              type="button"
-              className="return-btn return-btn-primary"
-              disabled={selectedIds.length === 0 || loadingReturn}
-              onClick={handleReturn}
-            >
-              {loadingReturn ? 'Đang trả sách...' : `Trả ${selectedIds.length} sách`}
-            </button>
-          </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 

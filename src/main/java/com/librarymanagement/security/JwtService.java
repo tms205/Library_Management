@@ -114,7 +114,9 @@ public class JwtService {
 
 		Object permissions = extractAllClaims(token).get("permissions");
 
-		if (permissions instanceof List<?> list) {
+		if (permissions instanceof List<?>) {
+
+			List<?> list = (List<?>) permissions;
 
 			return list.stream().map(String::valueOf).toList();
 		}

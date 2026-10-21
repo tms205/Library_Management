@@ -14,4 +14,8 @@ public interface BorrowRecordRepository extends JpaRepository<BorrowRecord, Long
 	);
 
 	List<BorrowRecord> findByMember_Id(Long member_Id);
+
+	List<BorrowRecord> findByMember_IdOrderByIdDesc(Long memberId);
+
+	List<BorrowRecord> findAllByOrderByIdDesc();
 }

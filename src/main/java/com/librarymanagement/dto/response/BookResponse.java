@@ -16,7 +16,7 @@ import lombok.Setter;
 @Builder
 public class BookResponse {
 
-	private Long idLong;
+	private Long id;
 	private String title;
 	private String isbn;
 	private Integer quantity;

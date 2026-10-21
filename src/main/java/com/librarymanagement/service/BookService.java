@@ -12,6 +12,7 @@ import java.util.Set;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.io.input.BOMInputStream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,9 @@ import com.librarymanagement.repository.BookCriteriaRepository;
 import com.librarymanagement.repository.BookRepository;
 import com.librarymanagement.specification.BookSpecification;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class BookService {
 
@@ -159,19 +163,13 @@ public class BookService {
 
 		Set<String> isbnInFile = new HashSet<>();
 
-		try (BufferedReader reader = //
-				new BufferedReader(//
-						new InputStreamReader(//
-								file.getInputStream(), //
-								StandardCharsets.UTF_8//
-						)//
-				); //
+		try (//
+				BOMInputStream bomInputStream = BOMInputStream.builder().setInputStream(file.getInputStream()).get();
 
-				CSVParser parser = CSVFormat.DEFAULT//
-						.builder()//
-						.setHeader()//
-						.setSkipHeaderRecord(true)//
-						.get()//
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(bomInputStream, StandardCharsets.UTF_8));
+
+				CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).get()
 						.parse(reader)) {
 
 			for (CSVRecord record : parser) {
@@ -196,12 +194,12 @@ public class BookService {
 					throw new BadRequestException("Số lượng phải lớn hơn hoặc bằng 0!");
 				}
 
-				// Kiểm tra trùng ISBN trong chính file CSV
+				// Kiem tra trung ISBN trong chinh file CSV
 				if (isbnInFile.contains(isbn)) {
 					throw new BadRequestException("ISBN " + isbn + " bị trùng trong file CSV!");
 				}
 
-				// Kiểm tra ISBN đã tồn tại trong database
+				// Kiem tra ISBN da ton tai trong database
 				if (bookRepository.existsByIsbn(isbn)) {
 					throw new BadRequestException("ISBN " + isbn + " đã tồn tại trong hệ thống!");
 				}
@@ -228,7 +226,7 @@ public class BookService {
 
 		} catch (Exception exception) {
 
-			exception.printStackTrace();
+			log.error("Import CSV that bai!", exception);
 
 			throw new BadRequestException("Import CSV thất bại. Vui lòng kiểm tra lại dữ liệu trong file!");
 		}

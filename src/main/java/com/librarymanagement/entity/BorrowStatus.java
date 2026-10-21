@@ -1,5 +1,5 @@
 package com.librarymanagement.entity;
 
 public enum BorrowStatus {
-	BORROWED, RETURNED
+	PENDING, BORROWED, RETURN_PENDING, RETURNED, REJECTED
 }

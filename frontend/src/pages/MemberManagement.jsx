@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-
 import { searchMembers, createMember, updateMember, deleteMember } from '../api/memberApi';
+import { hasPermission } from '../utils/auth';
 
 import '../styles/members.css';
 
 function MemberManagement() {
+  // Quyền hạn thực tế từ JWT
+  const canCreate = hasPermission('MEMBER_CREATE');
+  const canUpdate = hasPermission('MEMBER_UPDATE');
+  const canDelete = hasPermission('MEMBER_DELETE');
+  const hasRowActions = canUpdate || canDelete;
+
   const [members, setMembers] = useState([]);
 
   const [fullName, setFullName] = useState('');
@@ -272,31 +277,27 @@ function MemberManagement() {
   };
 
   return (
-    <main className="member-page">
+    <div className="member-page">
       <div className="member-page-wrapper">
         <header className="member-page-header">
           <div>
             <div className="member-page-pretitle">Library / Members</div>
-
             <h1>Quản lý thành viên</h1>
-
-            <p>Quản lý thông tin cá nhân và tài khoản thành viên thư viện.</p>
+            <p>Quản lý thông tin hồ sơ độc giả và tài khoản thành viên thư viện.</p>
           </div>
 
           <div className="member-page-actions">
-            <Link to="/dashboard" className="member-btn member-btn-home">
-              <span>←</span>
-              Trang chủ
-            </Link>
-
-            <button
-              type="button"
-              className="member-btn member-btn-primary"
-              onClick={openCreateForm}
-            >
-              <span>＋</span>
-              Thêm thành viên
-            </button>
+            {/* MEMBER_CREATE: Chỉ hiển thị nút Thêm thành viên khi có quyền */}
+            {canCreate && (
+              <button
+                type="button"
+                className="member-btn member-btn-primary"
+                onClick={openCreateForm}
+              >
+                <span>＋</span>
+                Thêm thành viên
+              </button>
+            )}
           </div>
         </header>
 
@@ -407,19 +408,18 @@ function MemberManagement() {
                       <th>Điện thoại</th>
                       <th>Địa chỉ</th>
                       <th>Account ID</th>
-                      <th className="member-action-heading">Thao tác</th>
+                      {/* Ẩn hẳn cột thao tác nếu không có quyền Sửa lẫn Xóa */}
+                      {hasRowActions && <th className="member-action-heading">Thao tác</th>}
                     </tr>
                   </thead>
 
                   <tbody>
                     {members.length === 0 ? (
                       <tr>
-                        <td colSpan="8">
+                        <td colSpan={hasRowActions ? 8 : 7}>
                           <div className="member-empty">
-                            <div className="member-empty-icon">M</div>
-
+                            <div className="member-empty-icon">👥</div>
                             <strong>Không tìm thấy thành viên</strong>
-
                             <span>Hãy thử thay đổi bộ lọc hoặc thêm thành viên mới.</span>
                           </div>
                         </td>
@@ -451,25 +451,34 @@ function MemberManagement() {
                             {member.accountId ? `#${member.accountId}` : '—'}
                           </td>
 
-                          <td>
-                            <div className="member-row-actions">
-                              <button
-                                type="button"
-                                className="member-action-btn"
-                                onClick={() => openEditForm(member)}
-                              >
-                                Sửa
-                              </button>
+                          {/* Nút hành động theo quyền */}
+                          {hasRowActions && (
+                            <td>
+                              <div className="member-row-actions">
+                                {/* MEMBER_UPDATE: Hiện nút Sửa */}
+                                {canUpdate && (
+                                  <button
+                                    type="button"
+                                    className="member-action-btn"
+                                    onClick={() => openEditForm(member)}
+                                  >
+                                    Sửa
+                                  </button>
+                                )}
 
-                              <button
-                                type="button"
-                                className="member-action-btn member-action-danger"
-                                onClick={() => handleDelete(member)}
-                              >
-                                Xóa
-                              </button>
-                            </div>
-                          </td>
+                                {/* MEMBER_DELETE: Chỉ ADMIN có quyền xóa, STAFF không có */}
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    className="member-action-btn member-action-danger"
+                                    onClick={() => handleDelete(member)}
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -527,9 +536,8 @@ function MemberManagement() {
           <div className="member-modal" role="dialog" aria-modal="true">
             <div className="member-modal-header">
               <div>
-                <span>MEMBER</span>
-
-                <h2>{editingMember ? 'Cập nhật thành viên' : 'Thêm thành viên mới'}</h2>
+                <span>MEMBER PROFILE</span>
+                <h2>{editingMember ? 'Cập nhật thông tin thành viên' : 'Thêm thành viên mới'}</h2>
               </div>
 
               <button type="button" onClick={() => setShowForm(false)}>
@@ -624,7 +632,7 @@ function MemberManagement() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

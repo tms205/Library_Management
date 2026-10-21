@@ -23,15 +23,14 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
 	// Ignorecase: không phân biệt hoa thường
 
 	// native query tức spring chạy sql trực tiếp
-	@Query(value = """
-			select * from books b
-			where(:title is null
-				or :title=''
-				or lower(b.title) like lower(concat('%', :title, '%')))
-			and(:isbn is null
-				or :isbn = ''
-				or b.isbn = :isbn)
-			""", nativeQuery = true)
-	List<Book> searchNative(@Param("title") String title, @Param("isbn") String isbn);
+	@Query(value = "SELECT * FROM books b "//
+			+ "WHERE (:title IS NULL OR :title = '' "//
+			+ "OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) "//
+			+ "AND (:isbn IS NULL OR :isbn = '' OR b.isbn = :isbn)", //
+			nativeQuery = true)
+	List<Book> searchNative(//
+			@Param("title") String title, //
+			@Param("isbn") String isbn//
+	);
 
 }

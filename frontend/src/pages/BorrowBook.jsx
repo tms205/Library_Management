@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
-
-import { Link } from 'react-router-dom';
-
 import { borrowBooks } from '../api/borrowApi';
-
 import { searchBooks } from '../api/bookApi';
+import { getUserInfo } from '../utils/auth';
 
 import '../styles/borrow.css';
 
 function BorrowBook() {
-  const [books, setBooks] = useState([]);
+  const user = getUserInfo();
 
-  const [selectedBooks, setSelectedBooks] = useState([]);
+  const [books, setBooks] = useState([]);
+  // Quản lý danh sách ID sách được chọn độc lập
+  const [selectedBookIds, setSelectedBookIds] = useState([]);
 
   const [title, setTitle] = useState('');
-
   const [isbn, setIsbn] = useState('');
 
   const [searchFilters, setSearchFilters] = useState({
@@ -23,22 +21,21 @@ function BorrowBook() {
   });
 
   const [page, setPage] = useState(0);
-
   const [totalPages, setTotalPages] = useState(null);
-
   const [hasNextPage, setHasNextPage] = useState(false);
 
   const [loadingBooks, setLoadingBooks] = useState(true);
-
   const [loadingBorrow, setLoadingBorrow] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [message, setMessage] = useState('');
-
   const [messageType, setMessageType] = useState('success');
 
-  const getBookId = (book) => {
-    return book.id ?? book.idLong;
-  };
+  // Chuẩn hóa Book object: đảm bảo luôn có book.id là số nguyên hợp lệ
+  const normalizeBook = (book) => ({
+    ...book,
+    id: book.id ?? book.idLong,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -47,15 +44,10 @@ function BorrowBook() {
       try {
         const response = await searchBooks({
           title: searchFilters.title || undefined,
-
           isbn: searchFilters.isbn || undefined,
-
           page: page,
-
           size: 10,
-
           sortBy: 'title',
-
           direction: 'asc',
         });
 
@@ -66,31 +58,25 @@ function BorrowBook() {
         const data = response.data;
 
         if (Array.isArray(data?.content)) {
-          setBooks(data.content);
-
+          const normalized = data.content.map(normalizeBook);
+          setBooks(normalized);
           setTotalPages(data.totalPages ?? 0);
-
           setHasNextPage(
             typeof data.last === 'boolean' ? !data.last : page < (data.totalPages ?? 1) - 1,
           );
-
           return;
         }
 
         if (Array.isArray(data)) {
-          setBooks(data);
-
+          const normalized = data.map(normalizeBook);
+          setBooks(normalized);
           setTotalPages(null);
-
           setHasNextPage(data.length === 10);
-
           return;
         }
 
         setBooks([]);
-
         setTotalPages(0);
-
         setHasNextPage(false);
       } catch (error) {
         if (cancelled) {
@@ -98,15 +84,11 @@ function BorrowBook() {
         }
 
         console.error(error);
-
         setBooks([]);
-
         setTotalPages(0);
-
         setHasNextPage(false);
 
         setMessageType('error');
-
         setMessage(
           error.response?.data?.message ||
             error.response?.data?.error ||
@@ -124,33 +106,26 @@ function BorrowBook() {
     return () => {
       cancelled = true;
     };
-  }, [page, searchFilters.title, searchFilters.isbn]);
+  }, [page, searchFilters.title, searchFilters.isbn, reloadKey]);
 
   const handleSearch = (event) => {
     event.preventDefault();
 
     setLoadingBooks(true);
-
     setMessage('');
-
     setPage(0);
 
     setSearchFilters({
       title: title.trim(),
-
       isbn: isbn.trim(),
     });
   };
 
   const handleResetSearch = () => {
     setTitle('');
-
     setIsbn('');
-
     setLoadingBooks(true);
-
     setMessage('');
-
     setPage(0);
 
     setSearchFilters({
@@ -159,77 +134,63 @@ function BorrowBook() {
     });
   };
 
-  const isSelected = (book) => {
-    const bookId = getBookId(book);
+  // Toggle checkbox độc lập cho từng ID sách
+  const handleToggleBook = (bookId) => {
+    if (bookId === null || bookId === undefined) return;
 
-    return selectedBooks.some((selectedBook) => getBookId(selectedBook) === bookId);
-  };
-
-  const toggleBook = (book) => {
-    if (Number(book.quantity) <= 0) {
-      return;
-    }
-
-    const bookId = getBookId(book);
-
-    setSelectedBooks((currentBooks) => {
-      const exists = currentBooks.some((selectedBook) => getBookId(selectedBook) === bookId);
-
-      if (exists) {
-        return currentBooks.filter((selectedBook) => getBookId(selectedBook) !== bookId);
+    setSelectedBookIds((prev) => {
+      if (prev.includes(bookId)) {
+        return prev.filter((id) => id !== bookId);
       }
-
-      return [...currentBooks, book];
+      return [...prev, bookId];
     });
   };
 
+  // Gửi yêu cầu mượn sách
   const handleBorrow = async () => {
-    if (selectedBooks.length === 0) {
+    console.log('Books:', books);
+    console.log('Selected book ids:', selectedBookIds);
+
+    // Validate 1: Danh sách chọn rỗng
+    if (selectedBookIds.length === 0) {
       setMessageType('error');
-
-      setMessage('Vui lòng chọn ít nhất 1 cuốn sách!');
-
+      setMessage('Vui lòng chọn ít nhất một cuốn sách!');
       return;
     }
 
+    // Validate 2: Đảm bảo toàn bộ ID hợp lệ (số nguyên > 0, không null/undefined)
+    const validBookIds = selectedBookIds
+      .filter((id) => id !== null && id !== undefined && !isNaN(Number(id)) && Number(id) > 0)
+      .map((id) => Number(id));
+
+    if (validBookIds.length === 0) {
+      setMessageType('error');
+      setMessage('Vui lòng chọn ít nhất một cuốn sách!');
+      return;
+    }
+
+    const payload = {
+      bookIds: validBookIds,
+    };
+
+    console.log('Borrow payload:', payload);
+
     try {
       setLoadingBorrow(true);
-
       setMessage('');
 
-      const requestData = {
-        bookIds: selectedBooks.map((book) => Number(getBookId(book))),
-      };
-
-      const response = await borrowBooks(requestData);
+      await borrowBooks(payload);
 
       setMessageType('success');
+      setMessage('Gửi yêu cầu mượn thành công! Vui lòng chờ thư viện xác nhận.');
 
-      setMessage(response.data?.message || `Mượn thành công ${selectedBooks.length} sách!`);
-
-      // Cap nhat quantity tren giao dien
-      const selectedIds = selectedBooks.map((book) => getBookId(book));
-
-      setBooks((currentBooks) =>
-        currentBooks.map((book) => {
-          if (selectedIds.includes(getBookId(book))) {
-            return {
-              ...book,
-
-              quantity: Math.max(0, Number(book.quantity) - 1),
-            };
-          }
-
-          return book;
-        }),
-      );
-
-      setSelectedBooks([]);
+      // Clear selection sau khi mượn thành công
+      setSelectedBookIds([]);
+      setReloadKey((current) => current + 1);
     } catch (error) {
       console.error(error);
 
       const data = error.response?.data;
-
       setMessageType('error');
 
       if (typeof data === 'string') {
@@ -240,14 +201,12 @@ function BorrowBook() {
         setMessage(data.error);
       } else if (data && typeof data === 'object') {
         const fieldErrors = Object.entries(data)
-
           .filter(([key]) => !['timestamp', 'status', 'error', 'path'].includes(key))
-
           .map(([, value]) => value);
 
         setMessage(fieldErrors[0] || 'Thông tin mượn sách không hợp lệ!');
       } else {
-        setMessage('Không thể mượn sách!');
+        setMessage('Không thể gửi yêu cầu mượn sách!');
       }
     } finally {
       setLoadingBorrow(false);
@@ -255,20 +214,14 @@ function BorrowBook() {
   };
 
   return (
-    <main className="borrow-page">
+    <div className="borrow-page">
       <div className="borrow-page-wrapper">
         <header className="borrow-page-header">
           <div>
-            <div className="borrow-page-pretitle">Library / Borrow</div>
-
-            <h1>Mượn sách</h1>
-
-            <p>Chọn các sách bạn muốn mượn. Hệ thống tự xác định tài khoản đang đăng nhập.</p>
+            <div className="borrow-page-pretitle">Library / Borrow Books</div>
+            <h1>Mượn sách trực tuyến</h1>
+            <p>Chọn các đầu sách bạn muốn mượn từ danh mục thư viện và gửi yêu cầu phê duyệt.</p>
           </div>
-
-          <Link to="/dashboard" className="borrow-btn borrow-btn-home">
-            ← Trang chủ
-          </Link>
         </header>
 
         {message && (
@@ -278,37 +231,34 @@ function BorrowBook() {
             }`}
           >
             <span className="borrow-alert-dot" />
-
             <span>{message}</span>
 
-            <button type="button" onClick={() => setMessage('')}>
+            <button type="button" onClick={() => setMessage('')} aria-label="Đóng thông báo">
               ×
             </button>
           </div>
         )}
 
+        {/* Khối xác nhận danh sách sách đã chọn */}
         <section className="borrow-card">
           <div className="borrow-card-header">
             <div>
-              <h2>Sách đã chọn</h2>
-
-              <p>Bạn có thể chọn nhiều sách trong cùng một lần mượn.</p>
+              <h2>Giỏ sách đã chọn</h2>
+              <p>Bạn có thể chọn đồng thời nhiều cuốn sách còn trong kho để mượn cùng lúc.</p>
             </div>
 
-            <div className="borrow-card-badge">{selectedBooks.length} BOOK</div>
+            <div className="borrow-card-badge">{selectedBookIds.length} CUỐN SÁCH</div>
           </div>
 
           <div className="borrow-info-grid">
             <div className="borrow-selected-box">
-              <span>Tài khoản</span>
-
-              <strong>Member đang đăng nhập</strong>
+              <span>Tài khoản người mượn</span>
+              <strong>{user.email || user.username}</strong>
             </div>
 
             <div className="borrow-selected-box">
-              <span>Số sách đã chọn</span>
-
-              <strong>{selectedBooks.length}</strong>
+              <span>Số lượng sách đã chọn</span>
+              <strong style={{ color: '#4f46e5' }}>{selectedBookIds.length} cuốn</strong>
             </div>
           </div>
 
@@ -316,8 +266,8 @@ function BorrowBook() {
             <button
               type="button"
               className="borrow-btn borrow-btn-outline"
-              disabled={selectedBooks.length === 0}
-              onClick={() => setSelectedBooks([])}
+              disabled={selectedBookIds.length === 0}
+              onClick={() => setSelectedBookIds([])}
             >
               Bỏ chọn tất cả
             </button>
@@ -325,20 +275,20 @@ function BorrowBook() {
             <button
               type="button"
               className="borrow-btn borrow-btn-primary"
-              disabled={loadingBorrow || selectedBooks.length === 0}
+              disabled={loadingBorrow || selectedBookIds.length === 0}
               onClick={handleBorrow}
             >
-              {loadingBorrow ? 'Đang xử lý...' : `Mượn ${selectedBooks.length} sách`}
+              {loadingBorrow ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu mượn'}
             </button>
           </div>
         </section>
 
+        {/* Khối tra cứu & danh sách sách */}
         <section className="borrow-card">
           <div className="borrow-card-header">
             <div>
-              <h2>Danh sách sách</h2>
-
-              <p>Tick vào các sách cần mượn.</p>
+              <h2>Tra cứu & chọn sách</h2>
+              <p>Đánh dấu vào ô vuông để chọn sách cần mượn (sách hết kho sẽ bị khóa chọn).</p>
             </div>
 
             <div className="borrow-page-count">
@@ -361,7 +311,7 @@ function BorrowBook() {
             </div>
 
             <div className="borrow-field">
-              <label>ISBN</label>
+              <label>Mã ISBN</label>
 
               <input
                 type="text"
@@ -390,46 +340,41 @@ function BorrowBook() {
             {loadingBooks ? (
               <div className="borrow-loading">Đang tải danh sách sách...</div>
             ) : books.length === 0 ? (
-              <div className="borrow-empty">Không tìm thấy sách.</div>
+              <div className="borrow-empty">Không tìm thấy sách nào phù hợp với bộ lọc.</div>
             ) : (
               <div className="borrow-table-wrapper">
                 <table className="borrow-table">
                   <thead>
                     <tr>
-                      <th>Chọn</th>
+                      <th style={{ width: '60px', textAlign: 'center' }}>Chọn</th>
                       <th>ID</th>
                       <th>Tên sách</th>
-                      <th>ISBN</th>
-                      <th>Số lượng</th>
-                      <th>Trạng thái</th>
+                      <th>Mã ISBN</th>
+                      <th>Số lượng kho</th>
+                      <th>Tình trạng</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {books.map((book) => {
-                      const bookId = getBookId(book);
-
-                      const selected = isSelected(book);
-
+                      const isChecked = selectedBookIds.includes(book.id);
                       const available = Number(book.quantity) > 0;
 
                       return (
-                        <tr key={bookId} className={selected ? 'borrow-row-selected' : ''}>
-                          <td>
+                        <tr key={book.id} className={isChecked ? 'borrow-row-selected' : ''}>
+                          <td style={{ textAlign: 'center' }}>
                             <input
                               type="checkbox"
-                              checked={selected}
+                              checked={isChecked}
                               disabled={!available}
-                              onChange={() => toggleBook(book)}
+                              onChange={() => handleToggleBook(book.id)}
+                              style={{ width: '18px', height: '18px', cursor: available ? 'pointer' : 'not-allowed' }}
                             />
                           </td>
 
-                          <td className="borrow-mono">#{bookId}</td>
-
+                          <td className="borrow-mono">#{book.id}</td>
                           <td className="borrow-book-name">{book.title}</td>
-
                           <td className="borrow-mono">{book.isbn}</td>
-
                           <td>{book.quantity}</td>
 
                           <td>
@@ -452,7 +397,7 @@ function BorrowBook() {
 
           <div className="borrow-card-footer">
             <span>
-              Đã chọn <strong>{selectedBooks.length}</strong> sách
+              Đã chọn <strong>{selectedBookIds.length}</strong> cuốn sách
             </span>
 
             <div className="borrow-pagination">
@@ -461,7 +406,6 @@ function BorrowBook() {
                 disabled={page === 0}
                 onClick={() => {
                   setLoadingBooks(true);
-
                   setPage((current) => current - 1);
                 }}
               >
@@ -477,7 +421,6 @@ function BorrowBook() {
                 }
                 onClick={() => {
                   setLoadingBooks(true);
-
                   setPage((current) => current + 1);
                 }}
               >
@@ -487,7 +430,7 @@ function BorrowBook() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 

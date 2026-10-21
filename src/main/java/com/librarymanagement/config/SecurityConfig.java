@@ -144,17 +144,53 @@ public class SecurityConfig {
 						.hasAuthority("MEMBER_DELETE")//
 
 						// BORROW / RETURN PERMISSIONS
-						// muon sach
+						// Staff / Admin: Xem danh sach quan ly muon tra
 						.requestMatchers(//
-								HttpMethod.POST, //
-								"/api/borrow/**"//
+								HttpMethod.GET, //
+								"/api/borrow/manage"//
+						)//
+						.hasAuthority("BORROW_APPROVE")//
+
+						// User: Xem sach cua toi
+						.requestMatchers(//
+								HttpMethod.GET, //
+								"/api/borrow/me"//
 						)//
 						.hasAuthority("BORROW_BOOK")//
 
-						// tra sach
+						// User: Gui yeu cau muon sach
+						.requestMatchers(//
+								HttpMethod.POST, //
+								"/api/borrow", //
+								"/api/borrow/"//
+						)//
+						.hasAuthority("BORROW_BOOK")//
+
+						// Staff / Admin: Duyet muon sach
 						.requestMatchers(//
 								HttpMethod.PUT, //
-								"/api/borrow/**"//
+								"/api/borrow/*/approve"//
+						)//
+						.hasAuthority("BORROW_APPROVE")//
+
+						// Staff / Admin: Tu choi muon sach
+						.requestMatchers(//
+								HttpMethod.PUT, //
+								"/api/borrow/*/reject"//
+						)//
+						.hasAuthority("BORROW_APPROVE")//
+
+						// Staff / Admin: Xac nhan tra sach
+						.requestMatchers(//
+								HttpMethod.PUT, //
+								"/api/borrow/*/confirm-return"//
+						)//
+						.hasAuthority("RETURN_CONFIRM")//
+
+						// User: Yeu cau tra sach
+						.requestMatchers(//
+								HttpMethod.PUT, //
+								"/api/borrow/*/request-return"//
 						)//
 						.hasAuthority("RETURN_BOOK")//
 

@@ -37,7 +37,6 @@ public class BorrowRecord {
 	@JoinColumn(name = "book_id", nullable = false)
 	private Book book;
 
-	@Column(nullable = false)
 	private LocalDate borrowDate;
 	private LocalDate returnDate;
 

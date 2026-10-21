@@ -34,7 +34,7 @@ public class BorrowController {
 	}
 
 	// =========================
-	// MUON NHIEU SACH
+	// MUON NHIEU SACH (YEU CAU MUON - PENDING)
 	// =========================
 
 	@PostMapping
@@ -42,50 +42,90 @@ public class BorrowController {
 			@Valid @RequestBody BorrowBookRequest request) {
 
 		// Email lay tu JWT
-		String email = //
-				authentication.getName();
+		String email = authentication.getName();
 
-		List<BorrowResponse> borrowedBooks = //
-				borrowService.borrowBooks(email, request);
+		List<BorrowResponse> borrowedBooks = borrowService.borrowBooks(email, request);
 
-		Map<String, Object> response = //
-				Map.of("message", "Mượn sách thành công!",
+		Map<String, Object> response = Map.of(
+				"message", "Gửi yêu cầu mượn thành công! Vui lòng chờ thư viện xác nhận.",
+				"total", borrowedBooks.size(),
+				"items", borrowedBooks
+		);
 
-						"total", borrowedBooks.size(),
-
-						"items", borrowedBooks);
-
-		return ResponseEntity//
-				.status(HttpStatus.CREATED)//
-				.body(response);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
 	// =========================
-	// SACH TOI DANG MUON
+	// SACH CUA TOI
 	// =========================
 
 	@GetMapping("/me")
 	public ResponseEntity<List<BorrowResponse>> getMyBorrowedBooks(Authentication authentication) {
 
-		String email = //
-				authentication.getName();
-
-		List<BorrowResponse> response = //
-				borrowService.getBorrowedBooksByEmail(email);
+		String email = authentication.getName();
+		List<BorrowResponse> response = borrowService.getBorrowedBooksByEmail(email);
 
 		return ResponseEntity.ok(response);
 	}
 
 	// =========================
-	// TRA SACH CUA TOI
+	// USER YEU CAU TRA SACH
 	// =========================
 
-	@PutMapping("/{borrowRecordId}/return")
-	public ResponseEntity<BorrowResponse> returnBook(Authentication authentication, @PathVariable Long borrowRecordId) {
+	@PutMapping("/{borrowRecordId}/request-return")
+	public ResponseEntity<BorrowResponse> requestReturn(Authentication authentication,
+			@PathVariable Long borrowRecordId) {
 
 		String email = authentication.getName();
+		BorrowResponse response = borrowService.requestReturn(email, borrowRecordId);
 
-		BorrowResponse response = borrowService.returnBook(email, borrowRecordId);
+		return ResponseEntity.ok(response);
+	}
+
+	// =========================
+	// STAFF / ADMIN: DANH SACH QUAN LY MUON TRA
+	// =========================
+
+	@GetMapping("/manage")
+	public ResponseEntity<List<BorrowResponse>> getBorrowManagement() {
+
+		List<BorrowResponse> response = borrowService.getAllBorrowRecords();
+
+		return ResponseEntity.ok(response);
+	}
+
+	// =========================
+	// STAFF / ADMIN: DUYET MUON
+	// =========================
+
+	@PutMapping("/{borrowRecordId}/approve")
+	public ResponseEntity<BorrowResponse> approveBorrow(@PathVariable Long borrowRecordId) {
+
+		BorrowResponse response = borrowService.approveBorrow(borrowRecordId);
+
+		return ResponseEntity.ok(response);
+	}
+
+	// =========================
+	// STAFF / ADMIN: TU CHOI MUON
+	// =========================
+
+	@PutMapping("/{borrowRecordId}/reject")
+	public ResponseEntity<BorrowResponse> rejectBorrow(@PathVariable Long borrowRecordId) {
+
+		BorrowResponse response = borrowService.rejectBorrow(borrowRecordId);
+
+		return ResponseEntity.ok(response);
+	}
+
+	// =========================
+	// STAFF / ADMIN: XAC NHAN TRA
+	// =========================
+
+	@PutMapping("/{borrowRecordId}/confirm-return")
+	public ResponseEntity<BorrowResponse> confirmReturn(@PathVariable Long borrowRecordId) {
+
+		BorrowResponse response = borrowService.confirmReturn(borrowRecordId);
 
 		return ResponseEntity.ok(response);
 	}

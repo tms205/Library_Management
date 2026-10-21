@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+	<Properties>
+		<Property name="LOG_PATTERN">
+			%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n
+		</Property>
+	</Properties>
+
+	<Appenders>
+
+		<!-- Log ra console -->
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="${LOG_PATTERN}" />
+		</Console>
+
+		<!-- Log ra file -->
+		<RollingFile
+			name="RollingFile"
+			fileName="logs/library-management.log"
+			filePattern="logs/library-management-%d{yyyy-MM-dd}-%i.log.gz">
+
+			<PatternLayout pattern="${LOG_PATTERN}" />
+
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1" />
+				<SizeBasedTriggeringPolicy size="10 MB" />
+			</Policies>
+
+			<DefaultRolloverStrategy max="30" />
+		</RollingFile>
+
+	</Appenders>
+
+	<Loggers>
+
+		<!-- Log cho project -->
+		<Logger
+			name="com.librarymanagement"
+			level="info"
+			additivity="false">
+
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="RollingFile" />
+
+		</Logger>
+
+		<!-- Log chung -->
+		<Root level="info">
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="RollingFile" />
+		</Root>
+
+	</Loggers>
+
+</Configuration>

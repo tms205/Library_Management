@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-
 import { searchBooks, createBook, updateBook, deleteBook, importBooks } from '../api/bookApi';
+import { hasPermission } from '../utils/auth';
 
 import '../styles/books.css';
 
 function BookManagement() {
+  // Quyền hạn thực tế từ JWT
+  const canCreate = hasPermission('BOOK_CREATE');
+  const canUpdate = hasPermission('BOOK_UPDATE');
+  const canDelete = hasPermission('BOOK_DELETE');
+  const canImport = hasPermission('BOOK_IMPORT');
+  const hasRowActions = canUpdate || canDelete;
+
   const [books, setBooks] = useState([]);
 
   const [title, setTitle] = useState('');
@@ -37,7 +43,6 @@ function BookManagement() {
   const applyBookResponse = (response) => {
     const data = response.data;
 
-    // Truong hop backend tra ve Spring Page<BookResponse>
     if (Array.isArray(data?.content)) {
       setBooks(data.content);
       setTotalPages(data.totalPages ?? 0);
@@ -49,15 +54,9 @@ function BookManagement() {
       return;
     }
 
-    // Truong hop backend dang tra ve List<BookResponse> co phan trang.
-    // Frontend khong the biet tong so trang neu backend khong tra totalPages,
-    // nen khong tu gan 1/1 nua.
     if (Array.isArray(data)) {
       setBooks(data);
       setTotalPages(null);
-
-      // Neu du 10 record thi cho phep thu trang ke tiep.
-      // Trang cuoi (< 10 record) se khoa nut Next.
       setHasNextPage(data.length === 10);
       return;
     }
@@ -248,7 +247,7 @@ function BookManagement() {
       };
 
       if (editingBook) {
-        await updateBook(editingBook.id ?? editingBook.idLong, data);
+        await updateBook(editingBook.id, data);
 
         setMessageType('success');
         setMessage('Cập nhật sách thành công.');
@@ -280,7 +279,7 @@ function BookManagement() {
   };
 
   const handleDelete = async (book) => {
-    const id = book.id ?? book.idLong;
+    const id = book.id;
 
     const confirmed = window.confirm(`Bạn có chắc muốn xóa sách "${book.title}" không?`);
 
@@ -354,33 +353,36 @@ function BookManagement() {
   };
 
   return (
-    <main className="gt-page">
+    <div className="gt-page">
       <div className="gt-page-wrapper">
         <header className="gt-page-header">
           <div>
             <div className="gt-page-pretitle">Library / Catalog</div>
-
-            <h1 className="gt-page-title">Quản lý sách</h1>
-
-            <p className="gt-page-description">Tìm kiếm, cập nhật và quản lý kho sách thư viện.</p>
+            <h1 className="gt-page-title">
+              {canCreate || canUpdate ? 'Quản lý kho sách' : 'Danh mục sách'}
+            </h1>
+            <p className="gt-page-description">
+              Tìm kiếm, tra cứu và quản lý các đầu sách trong hệ thống thư viện.
+            </p>
           </div>
 
           <div className="gt-page-actions">
-            <Link to="/dashboard" className="gt-btn gt-btn-home">
-              <span className="gt-home-arrow">←</span>
-              Trang chủ
-            </Link>
+            {/* BOOK_IMPORT: Chỉ hiển thị nút Import CSV khi có quyền */}
+            {canImport && (
+              <label className="gt-btn gt-btn-outline" style={{ cursor: 'pointer' }}>
+                <span className="gt-btn-icon">⇧</span>
+                Import CSV
+                <input type="file" accept=".csv" onChange={handleImport} hidden />
+              </label>
+            )}
 
-            <label className="gt-btn gt-btn-outline">
-              <span className="gt-btn-icon">⇧</span>
-              Import CSV
-              <input type="file" accept=".csv" onChange={handleImport} hidden />
-            </label>
-
-            <button type="button" className="gt-btn gt-btn-primary" onClick={openCreateForm}>
-              <span className="gt-btn-icon">＋</span>
-              Thêm sách
-            </button>
+            {/* BOOK_CREATE: Chỉ hiển thị nút Thêm sách khi có quyền */}
+            {canCreate && (
+              <button type="button" className="gt-btn gt-btn-primary" onClick={openCreateForm}>
+                <span className="gt-btn-icon">＋</span>
+                Thêm sách mới
+              </button>
+            )}
           </div>
         </header>
 
@@ -408,8 +410,7 @@ function BookManagement() {
           <div className="gt-card-header">
             <div>
               <div className="gt-card-title">Bộ lọc tìm kiếm</div>
-
-              <div className="gt-card-subtitle">Tìm theo tên sách hoặc ISBN</div>
+              <div className="gt-card-subtitle">Tìm theo tên sách hoặc mã chuẩn quốc tế ISBN</div>
             </div>
           </div>
 
@@ -428,7 +429,7 @@ function BookManagement() {
               </div>
 
               <div className="gt-field">
-                <label htmlFor="book-isbn">ISBN</label>
+                <label htmlFor="book-isbn">Mã ISBN</label>
 
                 <input
                   id="book-isbn"
@@ -455,8 +456,7 @@ function BookManagement() {
         <section className="gt-card">
           <div className="gt-card-header">
             <div>
-              <div className="gt-card-title">Danh sách sách</div>
-
+              <div className="gt-card-title">Danh sách đầu sách</div>
               <div className="gt-card-subtitle">Tối đa 10 bản ghi mỗi trang</div>
             </div>
 
@@ -485,27 +485,25 @@ function BookManagement() {
                       <th>Tác giả</th>
                       <th>Tồn kho</th>
                       <th>Trạng thái</th>
-                      <th className="gt-table-actions-heading">Thao tác</th>
+                      {/* Ẩn hẳn cột thao tác nếu tài khoản không có quyền Sửa lẫn Xóa */}
+                      {hasRowActions && <th className="gt-table-actions-heading">Thao tác</th>}
                     </tr>
                   </thead>
 
                   <tbody>
                     {books.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="gt-empty-cell">
+                        <td colSpan={hasRowActions ? 8 : 7} className="gt-empty-cell">
                           <div className="gt-empty-state">
-                            <div className="gt-empty-icon">B</div>
-
-                            <strong>Không tìm thấy sách</strong>
-
-                            <span>Hãy thay đổi bộ lọc hoặc thêm sách mới.</span>
+                            <div className="gt-empty-icon">📖</div>
+                            <strong>Không tìm thấy cuốn sách nào</strong>
+                            <span>Hãy thử thay đổi từ khóa bộ lọc hoặc tải lại trang.</span>
                           </div>
                         </td>
                       </tr>
                     ) : (
                       books.map((book) => {
-                        const bookId = book.id ?? book.idLong;
-
+                        const bookId = book.id;
                         const available = Number(book.quantity) > 0;
 
                         return (
@@ -517,7 +515,6 @@ function BookManagement() {
                                 <div className="gt-book-mark">
                                   {book.title?.charAt(0).toUpperCase() || 'B'}
                                 </div>
-
                                 <span className="gt-cell-strong">{book.title}</span>
                               </div>
                             </td>
@@ -540,25 +537,34 @@ function BookManagement() {
                               </span>
                             </td>
 
-                            <td>
-                              <div className="gt-row-actions">
-                                <button
-                                  type="button"
-                                  className="gt-action-btn"
-                                  onClick={() => openEditForm(book)}
-                                >
-                                  Sửa
-                                </button>
+                            {/* Nút hành động theo quyền thực tế */}
+                            {hasRowActions && (
+                              <td>
+                                <div className="gt-row-actions">
+                                  {/* BOOK_UPDATE: Hiện nút Sửa */}
+                                  {canUpdate && (
+                                    <button
+                                      type="button"
+                                      className="gt-action-btn"
+                                      onClick={() => openEditForm(book)}
+                                    >
+                                      Sửa
+                                    </button>
+                                  )}
 
-                                <button
-                                  type="button"
-                                  className="gt-action-btn gt-action-danger"
-                                  onClick={() => handleDelete(book)}
-                                >
-                                  Xóa
-                                </button>
-                              </div>
-                            </td>
+                                  {/* BOOK_DELETE: Hiện nút Xóa */}
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      className="gt-action-btn gt-action-danger"
+                                      onClick={() => handleDelete(book)}
+                                    >
+                                      Xóa
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -626,9 +632,8 @@ function BookManagement() {
           >
             <div className="gt-modal-header">
               <div>
-                <div className="gt-modal-pretitle">BOOK</div>
-
-                <h2 id="book-modal-title">{editingBook ? 'Cập nhật sách' : 'Thêm sách mới'}</h2>
+                <div className="gt-modal-pretitle">BOOK MANAGEMENT</div>
+                <h2 id="book-modal-title">{editingBook ? 'Cập nhật thông tin sách' : 'Thêm sách mới vào kho'}</h2>
               </div>
 
               <button
@@ -658,7 +663,7 @@ function BookManagement() {
 
               <div className="gt-form-grid">
                 <div className="gt-field">
-                  <label htmlFor="form-isbn">ISBN</label>
+                  <label htmlFor="form-isbn">Mã ISBN</label>
 
                   <input
                     id="form-isbn"
@@ -672,7 +677,7 @@ function BookManagement() {
                 </div>
 
                 <div className="gt-field">
-                  <label htmlFor="form-quantity">Số lượng</label>
+                  <label htmlFor="form-quantity">Số lượng tồn kho</label>
 
                   <input
                     id="form-quantity"
@@ -716,7 +721,7 @@ function BookManagement() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
