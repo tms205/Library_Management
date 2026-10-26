@@ -1,23 +1,17 @@
 import axios from 'axios';
 
+const BASE_URL = 'http://localhost:8080';
+
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: BASE_URL,
 });
 
-let isRefreshing = false;
-let failedQueue = [];
+// Dùng chung 1 Promise khi nhiều request cùng cần refresh
+let refreshPromise = null;
 
-const processQueue = (error, newAccessToken = null) => {
-  failedQueue.forEach((request) => {
-    if (error) {
-      request.reject(error);
-    } else {
-      request.resolve(newAccessToken);
-    }
-  });
-
-  failedQueue = [];
-};
+// ========================================================
+// KIEM TRA ACCESS TOKEN HET HAN
+// ========================================================
 
 const isTokenExpired = (token) => {
   try {
@@ -25,11 +19,17 @@ const isTokenExpired = (token) => {
       return true;
     }
 
-    const payloadBase64 = token.split('.')[1];
+    const parts = token.split('.');
 
-    const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    if (parts.length !== 3) {
+      return true;
+    }
 
-    const payload = JSON.parse(payloadJson);
+    let payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+
+    payloadBase64 += '='.repeat((4 - (payloadBase64.length % 4)) % 4);
+
+    const payload = JSON.parse(atob(payloadBase64));
 
     if (!payload.exp) {
       return true;
@@ -45,94 +45,43 @@ const isTokenExpired = (token) => {
   }
 };
 
-// =========================
-// REQUEST
-// =========================
+// ========================================================
+// LOGOUT
+// ========================================================
 
-axiosClient.interceptors.request.use(
-  (config) => {
-    const accessToken = localStorage.getItem('accessToken');
+const logoutAndRedirect = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+};
 
-    return config;
-  },
+// ========================================================
+// REFRESH TOKEN
+// ========================================================
 
-  (error) => {
-    return Promise.reject(error);
-  },
-);
+const refreshAccessToken = async () => {
+  // Nếu request khác đang refresh thì dùng chung Promise đó
+  if (refreshPromise) {
+    return refreshPromise;
+  }
 
-// =========================
-// RESPONSE
-// =========================
+  const refreshToken = localStorage.getItem('refreshToken');
 
-axiosClient.interceptors.response.use(
-  (response) => response,
+  if (!refreshToken) {
+    throw new Error('Không có refresh token!');
+  }
 
-  async (error) => {
-    const originalRequest = error.config;
+  refreshPromise = axios
+    .post(`${BASE_URL}/auth/refresh`, {
+      refreshToken: refreshToken,
+    })
+    .then((response) => {
+      const newAccessToken = response.data?.accessToken;
 
-    const status = error.response?.status;
-
-    const accessToken = localStorage.getItem('accessToken');
-
-    const refreshToken = localStorage.getItem('refreshToken');
-
-    const authError = status === 401 || status === 403;
-
-    // Không phải lỗi auth
-    if (!authError) {
-      return Promise.reject(error);
-    }
-
-    // 403 do thiếu permission thật
-    // chứ token chưa hết hạn
-    if (accessToken && !isTokenExpired(accessToken)) {
-      return Promise.reject(error);
-    }
-
-    // Request này đã thử refresh rồi
-    if (originalRequest._retry) {
-      return Promise.reject(error);
-    }
-
-    // Không còn refresh token
-    if (!refreshToken) {
-      logoutAndRedirect();
-
-      return Promise.reject(error);
-    }
-
-    // Nếu đang có 1 request khác refresh
-    // thì request này đứng chờ
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({
-          resolve,
-          reject,
-        });
-      }).then((newAccessToken) => {
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return axiosClient(originalRequest);
-      });
-    }
-
-    originalRequest._retry = true;
-    isRefreshing = true;
-
-    try {
-      // Dùng axios thường để tránh interceptor lặp
-      const response = await axios.post('http://localhost:8080/auth/refresh', {
-        refreshToken: refreshToken,
-      });
-
-      const newAccessToken = response.data.accessToken;
-
-      const newRefreshToken = response.data.refreshToken;
+      const newRefreshToken = response.data?.refreshToken;
 
       if (!newAccessToken) {
         throw new Error('Không nhận được access token mới!');
@@ -144,30 +93,156 @@ axiosClient.interceptors.response.use(
         localStorage.setItem('refreshToken', newRefreshToken);
       }
 
-      processQueue(null, newAccessToken);
+      console.log('Refresh access token thành công!');
+
+      return newAccessToken;
+    })
+    .finally(() => {
+      // Quan trọng:
+      // cho phép lần hết hạn tiếp theo refresh tiếp
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
+// ========================================================
+// REQUEST INTERCEPTOR
+// ========================================================
+
+axiosClient.interceptors.request.use(
+  async (config) => {
+    let accessToken = localStorage.getItem('accessToken');
+
+    // API không cần token
+    if (!accessToken) {
+      return config;
+    }
+
+    /*
+     * Nếu token đã hết hạn:
+     * refresh TRƯỚC khi gửi request lên backend.
+     */
+    if (isTokenExpired(accessToken)) {
+      try {
+        accessToken = await refreshAccessToken();
+      } catch (refreshError) {
+        console.error(
+          'Refresh token thất bại:',
+          refreshError.response?.status,
+          refreshError.response?.data || refreshError.message,
+        );
+
+        logoutAndRedirect();
+
+        return Promise.reject(refreshError);
+      }
+    }
+
+    config.headers = config.headers || {};
+
+    config.headers.Authorization = `Bearer ${accessToken}`;
+
+    return config;
+  },
+
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+// ========================================================
+// RESPONSE INTERCEPTOR
+// ========================================================
+
+axiosClient.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    // Không phải lỗi Authentication / Authorization
+    if (status !== 401 && status !== 403) {
+      return Promise.reject(error);
+    }
+
+    // Đã retry rồi thì không retry vô hạn
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    const authorizationHeader =
+      originalRequest.headers?.Authorization || originalRequest.headers?.authorization;
+
+    const requestAccessToken = authorizationHeader?.startsWith('Bearer ')
+      ? authorizationHeader.substring(7)
+      : null;
+
+    const currentAccessToken = localStorage.getItem('accessToken');
+
+    /*
+     * Request cũ đang dùng token cũ,
+     * nhưng request khác đã refresh thành công.
+     *
+     * => retry bằng token mới.
+     */
+    if (
+      requestAccessToken &&
+      currentAccessToken &&
+      requestAccessToken !== currentAccessToken &&
+      !isTokenExpired(currentAccessToken)
+    ) {
+      originalRequest._retry = true;
+
+      originalRequest.headers.Authorization = `Bearer ${currentAccessToken}`;
+
+      return axiosClient(originalRequest);
+    }
+
+    /*
+     * Token còn hạn nhưng backend trả 403:
+     * đây là thiếu permission thật.
+     *
+     * VD:
+     * STAFF gọi DELETE BOOK.
+     *
+     * Không refresh.
+     */
+    if (status === 403 && requestAccessToken && !isTokenExpired(requestAccessToken)) {
+      return Promise.reject(error);
+    }
+
+    /*
+     * Token hết hạn hoặc bị 401:
+     * thử refresh một lần.
+     */
+    originalRequest._retry = true;
+
+    try {
+      const newAccessToken = await refreshAccessToken();
+
+      originalRequest.headers = originalRequest.headers || {};
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-      // Gửi lại request vừa bị lỗi
       return axiosClient(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError, null);
+      console.error(
+        'REFRESH TOKEN THẤT BẠI:',
+        refreshError.response?.status,
+        refreshError.response?.data || refreshError.message,
+      );
 
       logoutAndRedirect();
 
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   },
 );
-
-const logoutAndRedirect = () => {
-  localStorage.removeItem('accessToken');
-
-  localStorage.removeItem('refreshToken');
-
-  window.location.href = '/login';
-};
 
 export default axiosClient;
