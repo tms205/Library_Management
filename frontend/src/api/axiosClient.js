@@ -37,7 +37,8 @@ const isTokenExpired = (token) => {
 
     const now = Math.floor(Date.now() / 1000);
 
-    return payload.exp <= now;
+    // Trừ hao 10 giây để chủ động refresh trước khi token hết hạn thực tế
+    return payload.exp <= now + 10;
   } catch (error) {
     console.error('Không đọc được access token:', error);
 

@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 // Helper functions quản lý token và kiểm tra quyền hạn (permissions) thực tế từ JWT
 
 export const getAccessToken = () => {
@@ -132,9 +134,27 @@ export const getUserInfo = (token = getAccessToken()) => {
 };
 
 /**
- * Đăng xuất: xóa token và chuyển hướng về trang login
+ * Đăng xuất: gọi API blacklist token, xóa token và chuyển hướng về trang login
  */
-export const logout = () => {
+export const logout = async () => {
+  const token = getAccessToken();
+
+  if (token) {
+    try {
+      await axios.post(
+        'http://localhost:8080/auth/logout',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+    } catch (error) {
+      console.error('Lỗi khi gọi API logout:', error);
+    }
+  }
+
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   window.location.href = '/login';
