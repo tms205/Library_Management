@@ -23,3 +23,9 @@ export const deleteMember = (id) => {
 export const getMemberById = (id) => {
   return axiosClient.get(`${API_URL}/${id}`);
 };
+
+// KHOA / MO KHOA TAI KHOAN DOC GIA
+export const toggleMemberStatus = (id, enabled) => {
+  const params = enabled !== undefined ? { enabled } : {};
+  return axiosClient.put(`${API_URL}/${id}/status`, null, { params });
+};

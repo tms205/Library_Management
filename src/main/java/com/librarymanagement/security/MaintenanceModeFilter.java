@@ -28,6 +28,7 @@ public class MaintenanceModeFilter extends OncePerRequestFilter {
 
 		if (path.startsWith("/api/system-config")//
 				|| path.equals("/auth/login")//
+				|| path.equals("/api/auth/login")//
 				|| path.startsWith("/swagger-ui")//
 				|| path.startsWith("/v3/api-docs")//
 				|| path.startsWith("/error")) {//

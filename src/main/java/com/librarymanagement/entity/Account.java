@@ -43,6 +43,9 @@ public class Account {
 	@Column(nullable = false)
 	private Boolean enabled;
 
+	@Column(name = "is_delete")
+	private Boolean isDelete = false;
+
 	// kh xoa role chi them
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "account_permission_groups", //

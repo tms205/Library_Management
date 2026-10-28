@@ -305,6 +305,120 @@
   font-weight: 600;
 }
 
+/* =========================================================================
+   SEARCH & FILTER CARD STYLES
+   ========================================================================= */
+.bm-search-card {
+  margin-bottom: 24px;
+  background: white;
+  border: 1px solid var(--bm-border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.bm-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bm-search-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--bm-text);
+}
+
+.bm-filter-active-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+}
+
+.bm-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.bm-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bm-form-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bm-text-secondary);
+}
+
+.bm-form-group input,
+.bm-form-group select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--bm-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--bm-text);
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.bm-form-group input:focus,
+.bm-form-group select:focus {
+  background: white;
+  border-color: var(--bm-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.bm-search-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.bm-btn-primary {
+  background: var(--bm-primary);
+  color: white;
+  border: 1px solid var(--bm-primary);
+}
+
+.bm-btn-primary:hover:not(:disabled) {
+  background: var(--bm-primary-dark);
+  border-color: var(--bm-primary-dark);
+}
+
+.bm-toolbar-summary {
+  margin-right: auto;
+}
+
+.bm-summary-text {
+  font-size: 14px;
+  color: var(--bm-text-secondary);
+}
+
+.bm-summary-text strong {
+  color: var(--bm-primary);
+  font-weight: 800;
+}
+
 @media (max-width: 750px) {
   .bm-page {
     padding: 26px 16px 40px;
@@ -313,4 +427,14 @@
     align-items: flex-start;
     flex-direction: column;
   }
+  .bm-search-grid {
+    grid-template-columns: 1fr;
+  }
+  .bm-search-actions {
+    flex-direction: column;
+  }
+  .bm-search-actions button {
+    width: 100%;
+  }
 }
+

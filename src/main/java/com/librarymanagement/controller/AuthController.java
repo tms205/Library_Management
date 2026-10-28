@@ -29,8 +29,12 @@ import com.librarymanagement.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
+// Hỗ trợ song song cả 2 prefix "/auth" và "/api/auth":
+// - Web Frontend hiện tại gọi trực tiếp qua "/auth/..."
+// - Mobile App và các công cụ test API hay dùng tiền tố chuẩn RESTful "/api/auth/..."
+// Giúp cả 2 client đều kết nối thông suốt, không bao giờ bị dính lỗi 404 Not Found
 @RestController
-@RequestMapping("/auth")
+@RequestMapping({"/auth", "/api/auth"})
 public class AuthController {
 
 	private final AuthService authService;

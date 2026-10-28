@@ -72,6 +72,12 @@ public class SecurityConfig {
 								"/auth/forgot-password", //
 								"/auth/reset-password", //
 								"/auth/refresh", //
+								"/api/auth/register", //
+								"/api/auth/login", //
+								"/api/auth/verify-email", //
+								"/api/auth/forgot-password", //
+								"/api/auth/reset-password", //
+								"/api/auth/refresh", //
 								"/error"//
 						)//
 						.permitAll()//

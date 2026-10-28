@@ -17,9 +17,9 @@ export const requestReturn = (borrowRecordId) => {
   return axiosClient.put(`${API_URL}/${borrowRecordId}/request-return`);
 };
 
-// STAFF / ADMIN: LAY DANH SACH QUAN LY MUON TRA
-export const getBorrowManagement = () => {
-  return axiosClient.get(`${API_URL}/manage`);
+// STAFF / ADMIN: LAY DANH SACH QUAN LY MUON TRA (CO HO TRO PARAMS TIM KIEM)
+export const getBorrowManagement = (params) => {
+  return axiosClient.get(`${API_URL}/manage`, { params });
 };
 
 // STAFF / ADMIN: DUYET YEU CAU MUON

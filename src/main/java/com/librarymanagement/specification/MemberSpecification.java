@@ -85,4 +85,15 @@ public class MemberSpecification {
 			return root.get("id").in(subquery);
 		};
 	}
+
+	// Lọc bỏ các độc giả đã bị xóa mềm (is_delete = 1)
+	public static Specification<Member> isNotDeleted() {
+		return (root, query, cb) -> {
+			var accountJoin = root.join("account", jakarta.persistence.criteria.JoinType.LEFT);
+			return cb.or(
+					cb.isNull(accountJoin.get("isDelete")),
+					cb.equal(accountJoin.get("isDelete"), false)
+			);
+		};
+	}
 }

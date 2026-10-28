@@ -24,4 +24,5 @@ public class CreateBookRequest {
 	@NotNull(message = "Thời gian xuất bản không được để trống!")
 	private LocalDate publishedDate;
 
+	private String image;
 }

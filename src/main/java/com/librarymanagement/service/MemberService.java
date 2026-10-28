@@ -3,6 +3,7 @@ package com.librarymanagement.service;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.librarymanagement.dto.request.CreateMemberRequest;
 import com.librarymanagement.dto.request.UpdateMemberRequest;
 import com.librarymanagement.entity.Account;
+import com.librarymanagement.entity.BorrowStatus;
 import com.librarymanagement.entity.Member;
-import com.librarymanagement.exception.ResourceNotFoundException;
+import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.exception.ConflictException;
+import com.librarymanagement.exception.ResourceNotFoundException;
 import com.librarymanagement.repository.AccountRepository;
+import com.librarymanagement.repository.BorrowRecordRepository;
 import com.librarymanagement.repository.MemberRepository;
 import com.librarymanagement.specification.MemberSpecification;
 
@@ -26,11 +30,19 @@ public class MemberService {
 
 	private final MemberRepository memberRepository;
 	private final AccountRepository accountRepository;
+	private final BorrowRecordRepository borrowRecordRepository;
 
-	public MemberService(MemberRepository memberRepository, AccountRepository accountRepository) {
+	@Autowired
+	public MemberService(MemberRepository memberRepository, AccountRepository accountRepository,
+			BorrowRecordRepository borrowRecordRepository) {
 
 		this.memberRepository = memberRepository;
 		this.accountRepository = accountRepository;
+		this.borrowRecordRepository = borrowRecordRepository;
+	}
+
+	public MemberService(MemberRepository memberRepository, AccountRepository accountRepository) {
+		this(memberRepository, accountRepository, null);
 	}
 
 	// lay tat ca member
@@ -93,7 +105,7 @@ public class MemberService {
 		return memberRepository.save(member);
 	}
 
-	// xoa member
+	// XÓA ĐỘC GIẢ (XÓA MỀM: TÌM SANG ACCOUNT VÀ CHUYỂN IS_DELETE TỪ 0 -> 1)
 	@Transactional
 	public void deleteMember(Long id) {
 
@@ -101,7 +113,52 @@ public class MemberService {
 				.orElseThrow(() -> new ResourceNotFoundException(//
 						"Không tìm thấy member có id: " + id));
 
-		memberRepository.delete(member);
+		Account account = member.getAccount();
+		if (account == null) {
+			throw new BadRequestException("Độc giả này chưa liên kết với tài khoản hệ thống nào!");
+		}
+
+		// Chặn xóa nếu độc giả ĐANG CẦM SÁCH CHƯA TRẢ để bảo đảm tài sản thư viện
+		if (borrowRecordRepository != null) {
+			boolean hasActiveBorrow = borrowRecordRepository.existsByMember_IdAndStatus(id, BorrowStatus.BORROWED)
+					|| borrowRecordRepository.existsByMember_IdAndStatus(id, BorrowStatus.RETURN_PENDING);
+
+			if (hasActiveBorrow) {
+				throw new BadRequestException("Không thể xóa độc giả \"" + member.getFullName()
+						+ "\" vì độc giả này đang có sách mượn chưa hoàn trả thư viện!");
+			}
+		}
+
+		// 1. Chuyển trạng thái cột is_delete trên bảng accounts từ 0 -> 1
+		account.setIsDelete(true);
+
+		// 2. Đồng thời vô hiệu hóa tài khoản (enabled = false) để chặn đăng nhập
+		account.setEnabled(false);
+
+		accountRepository.save(account);
+	}
+
+	// =========================================================================
+	// KHÓA / MỞ KHÓA TÀI KHOẢN ĐỘC GIẢ (THAY VÌ XÓA MẤT LỊCH SỬ THƯ VIỆN)
+	// =========================================================================
+	@Transactional
+	public Member updateMemberStatus(Long memberId, Boolean enabled) {
+		Member member = memberRepository.findById(memberId)
+				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy độc giả có id: " + memberId));
+
+		Account account = member.getAccount();
+		if (account == null) {
+			throw new BadRequestException("Độc giả này chưa liên kết với tài khoản hệ thống nào!");
+		}
+
+		if (enabled != null) {
+			account.setEnabled(enabled);
+		} else {
+			account.setEnabled(!Boolean.TRUE.equals(account.getEnabled()));
+		}
+
+		accountRepository.save(account);
+		return member;
 	}
 
 	// search + paging + sorting
@@ -152,7 +209,8 @@ public class MemberService {
 		);
 
 		Specification<Member> spec = //
-				MemberSpecification.hasFullName(fullName)//
+				MemberSpecification.isNotDeleted()//
+						.and(MemberSpecification.hasFullName(fullName))//
 						.and(MemberSpecification.hasPhone(phone))//
 						.and(MemberSpecification.hasAddress(address))//
 						.and(MemberSpecification.hasDateOfBirthBetween(fromDate, toDate))//

@@ -34,3 +34,6 @@ databaseChangeLog:
 
   - include:
      file: db/changelog/012-borrow-workflow-migration.sql
+
+  - include:
+     file: db/changelog/013-add-image-to-books.sql

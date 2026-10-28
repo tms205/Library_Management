@@ -92,6 +92,19 @@ public class MemberController {
 				.build();//
 	}
 
+	// =========================================================================
+	// KHÓA / MỞ KHÓA TÀI KHOẢN ĐỘC GIẢ (THAY VÌ XÓA MẤT LỊCH SỬ THƯ VIỆN)
+	// =========================================================================
+	@PutMapping("/{id}/status")
+	public ResponseEntity<MemberResponse> updateMemberStatus(
+			@PathVariable Long id,
+			@RequestParam(required = false) Boolean enabled) {
+
+		Member member = memberService.updateMemberStatus(id, enabled);
+
+		return ResponseEntity.ok(toResponse(member));
+	}
+
 	// search + paging + sorting
 	@GetMapping("/search")
 	public Page<MemberResponse> searchMember(@RequestParam(required = false) String fullName,
@@ -131,6 +144,13 @@ public class MemberController {
 
 	// chuyen Member thanh MemberResponse
 	private MemberResponse toResponse(Member member) {
+		Boolean enabled = (member.getAccount() != null && member.getAccount().getEnabled() != null)
+				? member.getAccount().getEnabled()
+				: true;
+
+		Integer isDelete = (member.getAccount() != null && Boolean.TRUE.equals(member.getAccount().getIsDelete()))
+				? 1
+				: 0;
 
 		return new MemberResponse(//
 				member.getId(), //
@@ -138,8 +158,10 @@ public class MemberController {
 				member.getDateOfBirth(), //
 				member.getPhone(), //
 				member.getAddress(), //
-				member.getAccount().getId(), //
-				member.getAccount().getEmail()//
+				member.getAccount() != null ? member.getAccount().getId() : null, //
+				member.getAccount() != null ? member.getAccount().getEmail() : null, //
+				enabled, //
+				isDelete //
 		);
 	}
 }

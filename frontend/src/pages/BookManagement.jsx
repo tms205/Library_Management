@@ -12,11 +12,20 @@ function BookManagement() {
   const canImport = hasPermission('BOOK_IMPORT');
   const hasRowActions = canUpdate || canDelete;
 
+  // Danh sách sách hiển thị trên trang hiện tại
   const [books, setBooks] = useState([]);
 
+  // State tạm thời của các ô nhập trong form bộ lọc (người dùng gõ ở đây)
   const [title, setTitle] = useState('');
   const [isbn, setIsbn] = useState('');
+  const [author, setAuthor] = useState('');
+  const [stockStatus, setStockStatus] = useState('ALL'); // 'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [sortBy, setSortBy] = useState('title');
+  const [direction, setDirection] = useState('asc');
 
+  // Quản lý phân trang
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -28,16 +37,28 @@ function BookManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
 
+  // Bộ lọc CHÍNH THỨC đang áp dụng gọi API (chỉ cập nhật khi bấm "Tìm kiếm" hoặc "Đặt lại")
+  // Tách biệt với state ô nhập ở trên để tránh gõ 1 chữ lại gọi API 1 lần gây lag UI
   const [searchFilters, setSearchFilters] = useState({
     title: '',
     isbn: '',
+    author: '',
+    stockStatus: 'ALL',
+    fromDate: '',
+    toDate: '',
+    sortBy: 'title',
+    direction: 'asc',
   });
+
+  // Chế độ xem: 'grid' (dạng thẻ có ảnh bìa - mặc định) hoặc 'table' (dạng bảng truyền thống)
+  const [viewMode, setViewMode] = useState('grid');
 
   const [formData, setFormData] = useState({
     title: '',
     isbn: '',
     quantity: '',
     publishedDate: '',
+    image: '',
   });
 
   const applyBookResponse = (response) => {
@@ -66,17 +87,28 @@ function BookManagement() {
     setHasNextPage(false);
   };
 
-  const loadBooks = async (pageNumber, filterTitle, filterIsbn) => {
-    try {
-      const response = await searchBooks({
-        title: filterTitle || undefined,
-        isbn: filterIsbn || undefined,
-        page: pageNumber,
-        size: 10,
-        sortBy: 'title',
-        direction: 'asc',
-      });
+  const buildQueryParams = (pageNumber, filters) => {
+    const params = {
+      page: pageNumber,
+      size: 10,
+      sortBy: filters.sortBy || 'title',
+      direction: filters.direction || 'asc',
+    };
 
+    if (filters.title) params.title = filters.title;
+    if (filters.isbn) params.isbn = filters.isbn;
+    if (filters.author) params.author = filters.author;
+    if (filters.stockStatus === 'IN_STOCK') params.inStock = true;
+    if (filters.stockStatus === 'OUT_OF_STOCK') params.inStock = false;
+    if (filters.fromDate) params.fromDate = filters.fromDate;
+    if (filters.toDate) params.toDate = filters.toDate;
+
+    return params;
+  };
+
+  const loadBooks = async (pageNumber, filters = searchFilters) => {
+    try {
+      const response = await searchBooks(buildQueryParams(pageNumber, filters));
       applyBookResponse(response);
     } catch (error) {
       console.error(error);
@@ -97,39 +129,13 @@ function BookManagement() {
 
     const fetchBooks = async () => {
       try {
-        const response = await searchBooks({
-          title: searchFilters.title || undefined,
-          isbn: searchFilters.isbn || undefined,
-          page,
-          size: 10,
-          sortBy: 'title',
-          direction: 'asc',
-        });
+        const response = await searchBooks(buildQueryParams(page, searchFilters));
 
         if (cancelled) {
           return;
         }
 
-        const data = response.data;
-
-        if (Array.isArray(data?.content)) {
-          setBooks(data.content);
-          setTotalPages(data.totalPages ?? 0);
-          setHasNextPage(
-            typeof data.last === 'boolean'
-              ? !data.last
-              : (data.number ?? page) < (data.totalPages ?? 1) - 1,
-          );
-        } else if (Array.isArray(data)) {
-          setBooks(data);
-          setTotalPages(null);
-          setHasNextPage(data.length === 10);
-        } else {
-          setBooks([]);
-          setTotalPages(0);
-          setHasNextPage(false);
-        }
-
+        applyBookResponse(response);
         setMessage('');
       } catch (error) {
         if (cancelled) {
@@ -156,7 +162,7 @@ function BookManagement() {
     return () => {
       cancelled = true;
     };
-  }, [page, searchFilters.title, searchFilters.isbn]);
+  }, [page, searchFilters]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -167,16 +173,13 @@ function BookManagement() {
     const nextFilters = {
       title: title.trim(),
       isbn: isbn.trim(),
+      author: author.trim(),
+      stockStatus,
+      fromDate,
+      toDate,
+      sortBy,
+      direction,
     };
-
-    if (
-      page === 0 &&
-      searchFilters.title === nextFilters.title &&
-      searchFilters.isbn === nextFilters.isbn
-    ) {
-      loadBooks(0, nextFilters.title, nextFilters.isbn);
-      return;
-    }
 
     setPage(0);
     setSearchFilters(nextFilters);
@@ -185,18 +188,26 @@ function BookManagement() {
   const handleResetSearch = () => {
     setTitle('');
     setIsbn('');
+    setAuthor('');
+    setStockStatus('ALL');
+    setFromDate('');
+    setToDate('');
+    setSortBy('title');
+    setDirection('asc');
+
     setLoading(true);
     setMessage('');
-
-    if (page === 0 && searchFilters.title === '' && searchFilters.isbn === '') {
-      loadBooks(0, '', '');
-      return;
-    }
 
     setPage(0);
     setSearchFilters({
       title: '',
       isbn: '',
+      author: '',
+      stockStatus: 'ALL',
+      fromDate: '',
+      toDate: '',
+      sortBy: 'title',
+      direction: 'asc',
     });
   };
 
@@ -217,6 +228,7 @@ function BookManagement() {
       isbn: '',
       quantity: '',
       publishedDate: '',
+      image: '',
     });
 
     setShowForm(true);
@@ -230,6 +242,7 @@ function BookManagement() {
       isbn: book.isbn || '',
       quantity: book.quantity ?? '',
       publishedDate: book.publishedDate || '',
+      image: book.image || '',
     });
 
     setShowForm(true);
@@ -244,6 +257,7 @@ function BookManagement() {
         isbn: formData.isbn.trim(),
         quantity: Number(formData.quantity),
         publishedDate: formData.publishedDate,
+        image: formData.image ? formData.image.trim() : null,
       };
 
       if (editingBook) {
@@ -331,7 +345,7 @@ function BookManagement() {
       setMessage('Import sách thành công.');
 
       setLoading(true);
-      await loadBooks(page, searchFilters.title, searchFilters.isbn);
+      await loadBooks(page, searchFilters);
     } catch (error) {
       console.error(error);
 
@@ -348,9 +362,19 @@ function BookManagement() {
     }
 
     const authors = Array.from(book.authorNames);
-
     return authors.length > 0 ? authors.join(', ') : '—';
   };
+
+  const hasActiveFilters = Boolean(
+    searchFilters.title ||
+    searchFilters.isbn ||
+    searchFilters.author ||
+    searchFilters.stockStatus !== 'ALL' ||
+    searchFilters.fromDate ||
+    searchFilters.toDate ||
+    searchFilters.sortBy !== 'title' ||
+    searchFilters.direction !== 'asc',
+  );
 
   return (
     <div className="gt-page">
@@ -409,44 +433,117 @@ function BookManagement() {
         <section className="gt-card gt-filter-card">
           <div className="gt-card-header">
             <div>
-              <div className="gt-card-title">Bộ lọc tìm kiếm</div>
-              <div className="gt-card-subtitle">Tìm theo tên sách hoặc mã chuẩn quốc tế ISBN</div>
+              <div className="gt-card-title">Bộ lọc tìm kiếm nâng cao</div>
+              <div className="gt-card-subtitle">
+                Tìm kiếm theo tên sách, tác giả, ISBN, tình trạng kho và thời gian xuất bản
+              </div>
             </div>
+            {hasActiveFilters && (
+              <span className="gt-badge gt-badge-info" style={{ alignSelf: 'center' }}>
+                ● Đang lọc kết quả
+              </span>
+            )}
           </div>
 
           <div className="gt-card-body">
             <form className="gt-filter-form" onSubmit={handleSearch}>
               <div className="gt-field">
-                <label htmlFor="book-title">Tên sách</label>
-
+                <label htmlFor="book-title">Tên cuốn sách</label>
                 <input
                   id="book-title"
                   type="text"
-                  placeholder="Ví dụ: Clean Code"
+                  placeholder="Ví dụ: Clean Code, Java..."
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                 />
               </div>
 
               <div className="gt-field">
-                <label htmlFor="book-isbn">Mã ISBN</label>
+                <label htmlFor="book-author">Tác giả</label>
+                <input
+                  id="book-author"
+                  type="text"
+                  placeholder="Ví dụ: Robert C. Martin..."
+                  value={author}
+                  onChange={(event) => setAuthor(event.target.value)}
+                />
+              </div>
 
+              <div className="gt-field">
+                <label htmlFor="book-isbn">Mã ISBN</label>
                 <input
                   id="book-isbn"
                   type="text"
-                  placeholder="Nhập ISBN..."
+                  placeholder="Ví dụ: 978-..."
                   value={isbn}
                   onChange={(event) => setIsbn(event.target.value)}
                 />
               </div>
 
+              <div className="gt-field">
+                <label htmlFor="book-stock">Tình trạng kho</label>
+                <select
+                  id="book-stock"
+                  value={stockStatus}
+                  onChange={(event) => setStockStatus(event.target.value)}
+                >
+                  <option value="ALL">Tất cả tình trạng</option>
+                  <option value="IN_STOCK">Còn sách sẵn sàng</option>
+                  <option value="OUT_OF_STOCK">Tạm hết sách</option>
+                </select>
+              </div>
+
+              <div className="gt-field">
+                <label htmlFor="book-from-date">Xuất bản từ ngày</label>
+                <input
+                  id="book-from-date"
+                  type="date"
+                  value={fromDate}
+                  onChange={(event) => setFromDate(event.target.value)}
+                />
+              </div>
+
+              <div className="gt-field">
+                <label htmlFor="book-to-date">Đến ngày</label>
+                <input
+                  id="book-to-date"
+                  type="date"
+                  value={toDate}
+                  onChange={(event) => setToDate(event.target.value)}
+                />
+              </div>
+
+              <div className="gt-field">
+                <label htmlFor="book-sort">Sắp xếp theo</label>
+                <select
+                  id="book-sort"
+                  value={`${sortBy}-${direction}`}
+                  onChange={(event) => {
+                    const [field, dir] = event.target.value.split('-');
+                    setSortBy(field);
+                    setDirection(dir);
+                  }}
+                >
+                  <option value="title-asc">Tên sách (A → Z)</option>
+                  <option value="title-desc">Tên sách (Z → A)</option>
+                  <option value="publishedDate-desc">Ngày xuất bản (Mới nhất)</option>
+                  <option value="publishedDate-asc">Ngày xuất bản (Cũ nhất)</option>
+                  <option value="quantity-desc">Số lượng kho (Nhiều nhất)</option>
+                  <option value="quantity-asc">Số lượng kho (Ít nhất)</option>
+                </select>
+              </div>
+
               <div className="gt-filter-actions">
-                <button type="button" className="gt-btn gt-btn-outline" onClick={handleResetSearch}>
-                  Đặt lại
+                <button
+                  type="button"
+                  className="gt-btn gt-btn-outline"
+                  onClick={handleResetSearch}
+                >
+                  ✕ Đặt lại bộ lọc
                 </button>
 
                 <button type="submit" className="gt-btn gt-btn-primary">
-                  Tìm kiếm
+                  🔍 Tìm kiếm
                 </button>
               </div>
             </form>
@@ -457,21 +554,150 @@ function BookManagement() {
           <div className="gt-card-header">
             <div>
               <div className="gt-card-title">Danh sách đầu sách</div>
-              <div className="gt-card-subtitle">Tối đa 10 bản ghi mỗi trang</div>
+              <div className="gt-card-subtitle">Hiển thị trực quan dạng thẻ có hình ảnh bìa</div>
             </div>
 
-            <div className="gt-card-meta">
-              {totalPages === null
-                ? `Trang ${page + 1}`
-                : `Trang ${totalPages === 0 ? 0 : page + 1} / ${totalPages}`}
+            <div className="gt-card-header-right">
+              {/* Toggle dạng thẻ / dạng bảng */}
+              <div className="gt-view-toggle">
+                <button
+                  type="button"
+                  className={`gt-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Hiển thị dạng thẻ (Card)"
+                >
+                  🗂️ Dạng thẻ
+                </button>
+                <button
+                  type="button"
+                  className={`gt-view-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Hiển thị dạng bảng (Table)"
+                >
+                  📋 Dạng bảng
+                </button>
+              </div>
+
+              <div className="gt-card-meta">
+                {totalPages === null
+                  ? `Trang ${page + 1}`
+                  : `Trang ${totalPages === 0 ? 0 : page + 1} / ${totalPages}`}
+              </div>
             </div>
           </div>
 
-          <div className="gt-card-body gt-card-body-table">
+          <div className={`gt-card-body ${viewMode === 'table' ? 'gt-card-body-table' : ''}`}>
             {loading ? (
               <div className="gt-loading">
                 <span className="gt-spinner" />
                 Đang tải dữ liệu...
+              </div>
+            ) : books.length === 0 ? (
+              <div className="gt-empty-state" style={{ padding: '48px 24px' }}>
+                <div className="gt-empty-icon">📖</div>
+                <strong>Không tìm thấy cuốn sách nào</strong>
+                <span>Hãy thử thay đổi từ khóa bộ lọc hoặc tải lại trang.</span>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="gt-cards-container">
+                <div className="gt-book-cards-grid">
+                  {books.map((book) => {
+                    const bookId = book.id;
+                    const available = Number(book.quantity) > 0;
+                    const authors = getAuthors(book);
+
+                    return (
+                      <div key={bookId} className="gt-book-card">
+                        {/* Khung ảnh bìa sách */}
+                        <div className="gt-book-cover-container">
+                          {book.image ? (
+                            <img
+                              src={book.image}
+                              alt={book.title}
+                              className="gt-book-cover-img"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextElementSibling) {
+                                  e.target.nextElementSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            className="gt-book-cover-fallback"
+                            style={{ display: book.image ? 'none' : 'flex' }}
+                          >
+                            <span className="gt-fallback-icon">📚</span>
+                            <span className="gt-fallback-title">{book.title}</span>
+                          </div>
+
+                          {/* ID và Trạng thái */}
+                          <div className="gt-card-badge-id">#{bookId}</div>
+                          <div
+                            className={`gt-card-badge-status ${
+                              available ? 'gt-badge-available' : 'gt-badge-out'
+                            }`}
+                          >
+                            {available ? `Còn ${book.quantity}` : 'Hết sách'}
+                          </div>
+                        </div>
+
+                        {/* Thân thẻ thông tin */}
+                        <div className="gt-book-card-body">
+                          <h3 className="gt-book-card-title" title={book.title}>
+                            {book.title}
+                          </h3>
+
+                          <div className="gt-book-card-meta">
+                            <div className="gt-card-meta-row">
+                              <span className="gt-card-meta-label">✍️ Tác giả:</span>
+                              <span className="gt-card-meta-value" title={authors}>
+                                {authors || 'Chưa cập nhật'}
+                              </span>
+                            </div>
+
+                            <div className="gt-card-meta-row">
+                              <span className="gt-card-meta-label">🏷️ ISBN:</span>
+                              <span className="gt-card-meta-value mono">{book.isbn}</span>
+                            </div>
+
+                            <div className="gt-card-meta-row">
+                              <span className="gt-card-meta-label">📅 Ngày XB:</span>
+                              <span className="gt-card-meta-value">{book.publishedDate || '—'}</span>
+                            </div>
+                          </div>
+
+                          {/* Thao tác Sửa / Xóa */}
+                          {hasRowActions && (
+                            <div className="gt-book-card-footer">
+                              {canUpdate && (
+                                <button
+                                  type="button"
+                                  className="gt-btn-card-edit"
+                                  onClick={() => openEditForm(book)}
+                                >
+                                  ✏️ Sửa
+                                </button>
+                              )}
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="gt-btn-card-delete"
+                                  onClick={() => handleDelete(book)}
+                                  title="Xóa sách"
+                                >
+                                  🗑️ Xóa
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="gt-table-responsive">
@@ -479,6 +705,7 @@ function BookManagement() {
                   <thead>
                     <tr>
                       <th>ID</th>
+                      <th>Bìa sách</th>
                       <th>Tên sách</th>
                       <th>ISBN</th>
                       <th>Ngày xuất bản</th>
@@ -491,84 +718,89 @@ function BookManagement() {
                   </thead>
 
                   <tbody>
-                    {books.length === 0 ? (
-                      <tr>
-                        <td colSpan={hasRowActions ? 8 : 7} className="gt-empty-cell">
-                          <div className="gt-empty-state">
-                            <div className="gt-empty-icon">📖</div>
-                            <strong>Không tìm thấy cuốn sách nào</strong>
-                            <span>Hãy thử thay đổi từ khóa bộ lọc hoặc tải lại trang.</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      books.map((book) => {
-                        const bookId = book.id;
-                        const available = Number(book.quantity) > 0;
+                    {books.map((book) => {
+                      const bookId = book.id;
+                      const available = Number(book.quantity) > 0;
 
-                        return (
-                          <tr key={bookId}>
-                            <td className="gt-cell-mono">#{bookId}</td>
+                      return (
+                        <tr key={bookId}>
+                          <td className="gt-cell-mono">#{bookId}</td>
 
+                          <td>
+                            <div className="gt-table-thumb-wrap">
+                              {book.image ? (
+                                <img
+                                  src={book.image}
+                                  alt={book.title}
+                                  className="gt-table-thumb"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextElementSibling) {
+                                      e.target.nextElementSibling.style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="gt-table-thumb-fallback"
+                                style={{ display: book.image ? 'none' : 'flex' }}
+                              >
+                                {book.title?.charAt(0).toUpperCase() || 'B'}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <span className="gt-cell-strong">{book.title}</span>
+                          </td>
+
+                          <td className="gt-cell-mono gt-isbn">{book.isbn}</td>
+
+                          <td>{book.publishedDate || '—'}</td>
+
+                          <td className="gt-authors">{getAuthors(book)}</td>
+
+                          <td className="gt-cell-strong">{book.quantity}</td>
+
+                          <td>
+                            <span
+                              className={`gt-status ${
+                                available ? 'gt-status-green' : 'gt-status-red'
+                              }`}
+                            >
+                              {available ? 'Còn sách' : 'Hết sách'}
+                            </span>
+                          </td>
+
+                          {/* Nút hành động theo quyền thực tế */}
+                          {hasRowActions && (
                             <td>
-                              <div className="gt-book-cell">
-                                <div className="gt-book-mark">
-                                  {book.title?.charAt(0).toUpperCase() || 'B'}
-                                </div>
-                                <span className="gt-cell-strong">{book.title}</span>
+                              <div className="gt-row-actions">
+                                {canUpdate && (
+                                  <button
+                                    type="button"
+                                    className="gt-action-btn"
+                                    onClick={() => openEditForm(book)}
+                                  >
+                                    Sửa
+                                  </button>
+                                )}
+
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    className="gt-action-btn gt-action-danger"
+                                    onClick={() => handleDelete(book)}
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
                               </div>
                             </td>
-
-                            <td className="gt-cell-mono gt-isbn">{book.isbn}</td>
-
-                            <td>{book.publishedDate || '—'}</td>
-
-                            <td className="gt-authors">{getAuthors(book)}</td>
-
-                            <td className="gt-cell-strong">{book.quantity}</td>
-
-                            <td>
-                              <span
-                                className={`gt-status ${
-                                  available ? 'gt-status-green' : 'gt-status-red'
-                                }`}
-                              >
-                                {available ? 'Còn sách' : 'Hết sách'}
-                              </span>
-                            </td>
-
-                            {/* Nút hành động theo quyền thực tế */}
-                            {hasRowActions && (
-                              <td>
-                                <div className="gt-row-actions">
-                                  {/* BOOK_UPDATE: Hiện nút Sửa */}
-                                  {canUpdate && (
-                                    <button
-                                      type="button"
-                                      className="gt-action-btn"
-                                      onClick={() => openEditForm(book)}
-                                    >
-                                      Sửa
-                                    </button>
-                                  )}
-
-                                  {/* BOOK_DELETE: Hiện nút Xóa */}
-                                  {canDelete && (
-                                    <button
-                                      type="button"
-                                      className="gt-action-btn gt-action-danger"
-                                      onClick={() => handleDelete(book)}
-                                    >
-                                      Xóa
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })
-                    )}
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -702,6 +934,36 @@ function BookManagement() {
                   onChange={handleChange}
                   required
                 />
+              </div>
+
+              <div className="gt-field gt-field-full">
+                <label htmlFor="form-image">Đường dẫn ảnh bìa (URL ảnh)</label>
+
+                <input
+                  id="form-image"
+                  type="url"
+                  name="image"
+                  placeholder="https://images.unsplash.com/... hoặc link ảnh bất kỳ"
+                  value={formData.image}
+                  onChange={handleChange}
+                />
+
+                {formData.image && (
+                  <div className="gt-image-preview-box">
+                    <span className="gt-preview-label">Xem trước ảnh:</span>
+                    <img
+                      src={formData.image}
+                      alt="Xem trước ảnh bìa"
+                      className="gt-image-preview-thumb"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                      onLoad={(e) => {
+                        e.target.style.display = 'block';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="gt-modal-footer">

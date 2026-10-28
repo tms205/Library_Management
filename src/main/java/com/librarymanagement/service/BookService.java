@@ -55,22 +55,45 @@ public class BookService {
 
 	// tự xây dưng query bằng CriteriaBuilder, Predicate,...: Criteria API
 	@Transactional(readOnly = true)
-	public Page<Book> search(String title, //
-			String isbn, //
-			int page, //
-			int size, //
-			String sortBy, //
-			String direction, //
-			String sortBy2, //
-			String direction2) {//
-		return bookCriteriaRepository.search(title, //
-				isbn, //
-				page, //
-				size, //
-				sortBy, //
-				direction, //
-				sortBy2, //
-				direction2);//
+	public Page<Book> search(
+			String title,
+			String isbn,
+			String author,
+			Boolean inStock,
+			java.time.LocalDate fromDate,
+			java.time.LocalDate toDate,
+			int page,
+			int size,
+			String sortBy,
+			String direction,
+			String sortBy2,
+			String direction2) {
+		return bookCriteriaRepository.search(
+				title,
+				isbn,
+				author,
+				inStock,
+				fromDate,
+				toDate,
+				page,
+				size,
+				sortBy,
+				direction,
+				sortBy2,
+				direction2);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<Book> search(
+			String title,
+			String isbn,
+			int page,
+			int size,
+			String sortBy,
+			String direction,
+			String sortBy2,
+			String direction2) {
+		return search(title, isbn, null, null, null, null, page, size, sortBy, direction, sortBy2, direction2);
 	}
 
 	// Specification: chia điều kiện search thành từng spec và ghép lại
@@ -98,6 +121,7 @@ public class BookService {
 		book.setIsbn(request.getIsbn());
 		book.setQuantity(request.getQuantity());
 		book.setPublishedDate(request.getPublishedDate());
+		book.setImage(request.getImage());
 
 		return bookRepository.save(book);
 	}
@@ -113,6 +137,9 @@ public class BookService {
 		book.setIsbn(request.getIsbn());
 		book.setQuantity(request.getQuantity());
 		book.setPublishedDate(request.getPublishedDate());
+		if (request.getImage() != null) {
+			book.setImage(request.getImage());
+		}
 
 		return bookRepository.save(book);
 	}

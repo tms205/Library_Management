@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { searchMembers, createMember, updateMember, deleteMember } from '../api/memberApi';
+import { searchMembers, createMember, updateMember, deleteMember, toggleMemberStatus } from '../api/memberApi';
 import { hasPermission } from '../utils/auth';
 
 import '../styles/members.css';
@@ -62,16 +62,20 @@ function MemberManagement() {
 
         const data = response.data;
 
+        let list = [];
         if (Array.isArray(data?.content)) {
-          setMembers(data.content);
+          list = data.content;
           setTotalPages(data.totalPages ?? 0);
         } else if (Array.isArray(data)) {
-          setMembers(data);
+          list = data;
           setTotalPages(data.length > 0 ? 1 : 0);
         } else {
-          setMembers([]);
           setTotalPages(0);
         }
+
+        // Ẩn các thành viên đã bị xóa (is_delete = 1)
+        const visible = list.filter((m) => m.is_delete !== 1 && m.isDelete !== 1);
+        setMembers(visible);
 
         setMessage('');
       } catch (error) {
@@ -182,13 +186,18 @@ function MemberManagement() {
 
       const data = response.data;
 
+      let list = [];
       if (Array.isArray(data?.content)) {
-        setMembers(data.content);
+        list = data.content;
         setTotalPages(data.totalPages ?? 0);
       } else if (Array.isArray(data)) {
-        setMembers(data);
+        list = data;
         setTotalPages(data.length > 0 ? 1 : 0);
       }
+
+      // Ẩn các thành viên đã bị xóa (is_delete = 1)
+      const visible = list.filter((m) => m.is_delete !== 1 && m.isDelete !== 1);
+      setMembers(visible);
     } catch (error) {
       console.error(error);
 
@@ -265,7 +274,10 @@ function MemberManagement() {
       await deleteMember(member.id);
 
       setMessageType('success');
-      setMessage('Xóa thành viên thành công.');
+      setMessage(`Xóa thành viên "${member.fullName}" thành công.`);
+
+      // Ẩn ngay lập tức dòng thành viên bị xóa trên giao diện
+      setMembers((prev) => prev.filter((m) => m.id !== member.id));
 
       await reloadCurrentPage();
     } catch (error) {
@@ -273,6 +285,33 @@ function MemberManagement() {
 
       setMessageType('error');
       setMessage(error.response?.data?.message || 'Không thể xóa thành viên!');
+    }
+  };
+
+  // Khóa hoặc mở khóa tài khoản độc giả (giúp bảo lưu lịch sử mượn trả thay vì xóa)
+  const handleToggleLock = async (member) => {
+    const isCurrentlyActive = member.enabled !== false;
+    const actionText = isCurrentlyActive ? 'khóa' : 'mở khóa';
+    const confirmPrompt = isCurrentlyActive
+      ? `Bạn có chắc chắn muốn KHÓA tài khoản của "${member.fullName}" không?\n\nSau khi khóa, độc giả này sẽ không thể đăng nhập hoặc mượn sách, nhưng toàn bộ lịch sử mượn trả cũ vẫn được bảo lưu nguyên vẹn.`
+      : `Bạn có muốn MỞ KHÓA tài khoản của "${member.fullName}" để độc giả có thể tiếp tục sử dụng thư viện?`;
+
+    if (!window.confirm(confirmPrompt)) {
+      return;
+    }
+
+    try {
+      await toggleMemberStatus(member.id, !isCurrentlyActive);
+
+      setMessageType('success');
+      setMessage(`Đã ${actionText} tài khoản thành viên "${member.fullName}" thành công.`);
+
+      await reloadCurrentPage();
+    } catch (error) {
+      console.error(error);
+
+      setMessageType('error');
+      setMessage(error.response?.data?.message || `Không thể ${actionText} tài khoản thành viên!`);
     }
   };
 
@@ -403,6 +442,7 @@ function MemberManagement() {
                     <tr>
                       <th>ID</th>
                       <th>Thành viên</th>
+                      <th>Trạng thái</th>
                       <th>Email</th>
                       <th>Ngày sinh</th>
                       <th>Điện thoại</th>
@@ -414,9 +454,9 @@ function MemberManagement() {
                   </thead>
 
                   <tbody>
-                    {members.length === 0 ? (
+                    {members.filter((m) => m.is_delete !== 1 && m.isDelete !== 1).length === 0 ? (
                       <tr>
-                        <td colSpan={hasRowActions ? 8 : 7}>
+                        <td colSpan={hasRowActions ? 9 : 8}>
                           <div className="member-empty">
                             <div className="member-empty-icon">👥</div>
                             <strong>Không tìm thấy thành viên</strong>
@@ -425,7 +465,9 @@ function MemberManagement() {
                         </td>
                       </tr>
                     ) : (
-                      members.map((member) => (
+                      members
+                        .filter((m) => m.is_delete !== 1 && m.isDelete !== 1)
+                        .map((member) => (
                         <tr key={member.id}>
                           <td className="member-mono">#{member.id}</td>
 
@@ -437,6 +479,18 @@ function MemberManagement() {
 
                               <span>{member.fullName}</span>
                             </div>
+                          </td>
+
+                          <td>
+                            {member.enabled === false ? (
+                              <span className="member-status-badge member-status-locked" title="Tài khoản đang bị khóa">
+                                🔒 Đã khóa
+                              </span>
+                            ) : (
+                              <span className="member-status-badge member-status-active" title="Tài khoản đang hoạt động bình thường">
+                                🟢 Hoạt động
+                              </span>
+                            )}
                           </td>
 
                           <td>{member.email || '—'}</td>
@@ -455,6 +509,26 @@ function MemberManagement() {
                           {hasRowActions && (
                             <td>
                               <div className="member-row-actions">
+                                {/* Khóa / Mở khóa tài khoản: Giúp bảo lưu lịch sử mượn trả mà vẫn chặn truy cập */}
+                                {canUpdate && (
+                                  <button
+                                    type="button"
+                                    className={`member-action-btn ${
+                                      member.enabled === false
+                                        ? 'member-action-unlock'
+                                        : 'member-action-lock'
+                                    }`}
+                                    onClick={() => handleToggleLock(member)}
+                                    title={
+                                      member.enabled === false
+                                        ? 'Mở khóa tài khoản độc giả'
+                                        : 'Khóa tài khoản độc giả'
+                                    }
+                                  >
+                                    {member.enabled === false ? '🔓 Mở khóa' : '🔒 Khóa'}
+                                  </button>
+                                )}
+
                                 {/* MEMBER_UPDATE: Hiện nút Sửa */}
                                 {canUpdate && (
                                   <button

@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import com.librarymanagement.entity.Member;
 import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.exception.ResourceNotFoundException;
 import com.librarymanagement.repository.BookRepository;
+import com.librarymanagement.repository.BorrowCriteriaRepository;
 import com.librarymanagement.repository.BorrowRecordRepository;
 import com.librarymanagement.repository.MemberRepository;
 
@@ -27,16 +29,28 @@ public class BorrowService {
 	private final BorrowRecordRepository borrowRecordRepository;
 	private final MemberRepository memberRepository;
 	private final BookRepository bookRepository;
+	private final BorrowCriteriaRepository borrowCriteriaRepository;
 
-	public BorrowService(//
-			BorrowRecordRepository borrowRecordRepository, //
-			MemberRepository memberRepository, //
-			BookRepository bookRepository//
-	) {
+	@Autowired
+	public BorrowService(
+			BorrowRecordRepository borrowRecordRepository,
+			MemberRepository memberRepository,
+			BookRepository bookRepository,
+			BorrowCriteriaRepository borrowCriteriaRepository) {
 
 		this.borrowRecordRepository = borrowRecordRepository;
 		this.memberRepository = memberRepository;
 		this.bookRepository = bookRepository;
+		this.borrowCriteriaRepository = borrowCriteriaRepository;
+	}
+
+	// Constructor tương thích ngược cho unit test
+	public BorrowService(
+			BorrowRecordRepository borrowRecordRepository,
+			MemberRepository memberRepository,
+			BookRepository bookRepository) {
+
+		this(borrowRecordRepository, memberRepository, bookRepository, null);
 	}
 
 	// =========================
@@ -48,6 +62,12 @@ public class BorrowService {
 
 		// Lay dung member dang login
 		Member member = getMemberByEmail(email);
+
+		// Chặn mượn sách nếu tài khoản độc giả đang bị khóa hoặc đã bị xóa
+		if (member.getAccount() != null && (Boolean.FALSE.equals(member.getAccount().getEnabled())
+				|| Boolean.TRUE.equals(member.getAccount().getIsDelete()))) {
+			throw new BadRequestException("Tài khoản của bạn đã bị khóa hoặc bị xóa. Bạn không thể mượn sách mới!");
+		}
 
 		if (request.getBookIds() == null || request.getBookIds().isEmpty()) {
 			throw new BadRequestException("Danh sách sách không được để trống!");
@@ -161,13 +181,31 @@ public class BorrowService {
 	}
 
 	// =========================
-	// STAFF / ADMIN: DANH SACH QUAN LY MUON TRA
+	// STAFF / ADMIN: DANH SACH QUAN LY MUON TRA (CO HO TRO TIM KIEM & BO LOC)
 	// =========================
 
-	@Transactional
-	public List<BorrowResponse> getAllBorrowRecords() {
+	@Transactional(readOnly = true)
+	public List<BorrowResponse> searchBorrowRecords(
+			String memberName,
+			String bookTitle,
+			LocalDate fromDate,
+			LocalDate toDate,
+			LocalDate date,
+			BorrowStatus status) {
+
+		if (borrowCriteriaRepository != null) {
+			return borrowCriteriaRepository.search(memberName, bookTitle, fromDate, toDate, date, status)
+					.stream()
+					.map(this::toResponse)
+					.toList();
+		}
 
 		return borrowRecordRepository.findAllByOrderByIdDesc().stream().map(this::toResponse).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<BorrowResponse> getAllBorrowRecords() {
+		return searchBorrowRecords(null, null, null, null, null, null);
 	}
 
 	// =========================
@@ -182,6 +220,12 @@ public class BorrowService {
 
 		if (record.getStatus() != BorrowStatus.PENDING) {
 			throw new BadRequestException("Chỉ có thể duyệt yêu cầu mượn đang ở trạng thái chờ duyệt (PENDING)!");
+		}
+
+		// Không cho duyệt đơn nếu tài khoản độc giả đang bị khóa
+		if (record.getMember() != null && record.getMember().getAccount() != null
+				&& Boolean.FALSE.equals(record.getMember().getAccount().getEnabled())) {
+			throw new BadRequestException("Không thể duyệt phiếu mượn vì tài khoản độc giả này hiện đang bị khóa!");
 		}
 
 		Book book = record.getBook();

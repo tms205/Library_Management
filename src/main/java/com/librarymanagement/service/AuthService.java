@@ -150,7 +150,8 @@ public class AuthService {
 
 		if (!account.getEnabled()) {
 
-			throw new UnauthorizedException("Tài khoản chưa được xác minh email!");
+			throw new UnauthorizedException("Tài khoản đã bị khóa, vui lòng xác thực tài khoản email"//
+					+ "hoặc liên hệ Admin để được giải đáp");
 		}
 
 		// =========================
@@ -215,6 +216,12 @@ public class AuthService {
 
 		Account account = //
 				refreshToken.getAccount();
+
+		// Không cấp mới access token nếu tài khoản đã bị khóa
+		if (Boolean.FALSE.equals(account.getEnabled())) {
+			throw new UnauthorizedException(
+					"Tài khoản của bạn đã bị khóa! Vui lòng liên hệ thủ thư/Admin để được hỗ trợ.");
+		}
 
 		if (systemConfigService.isMaintenanceMode()) {
 

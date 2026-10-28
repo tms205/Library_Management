@@ -39,10 +39,16 @@ public class BookController {
 		this.bookService = bookService;
 	}
 
+	// API tìm kiếm sách đa tiêu chí: tiêu đề, ISBN, tác giả, trạng thái kho, khoảng ngày xuất bản
+	// Phục vụ cả giao diện Web React và ứng dụng Di động Flutter/React Native
 	@GetMapping("/search")
 	public ResponseEntity<Page<BookResponse>> searchBooks(//
 			@RequestParam(required = false) String title, //
 			@RequestParam(required = false) String isbn, //
+			@RequestParam(required = false) String author, //
+			@RequestParam(required = false) Boolean inStock, //
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate, //
+			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate, //
 			@RequestParam(defaultValue = "0") int page, //
 			@RequestParam(defaultValue = "10") int size, //
 			@RequestParam(defaultValue = "title") String sortBy, //
@@ -51,20 +57,53 @@ public class BookController {
 			@RequestParam(defaultValue = "desc") String direction2//
 	) {
 
-		Page<Book> books = bookService.search(//
-				title, //
-				isbn, //
-				page, //
-				Math.min(size, 10), //
-				sortBy, //
-				direction, //
-				sortBy2, //
-				direction2//
-		);
+		Page<Book> books;
+		// Nếu không truyền các bộ lọc nâng cao (author, inStock, dates), gọi hàm 8 tham số cũ
+		// để giữ tương thích tuyệt đối với các Unit Test Mockito đã viết trước đó
+		if (author == null && inStock == null && fromDate == null && toDate == null) {
+			books = bookService.search(//
+					title, //
+					isbn, //
+					page, //
+					Math.min(size, 10), //
+					sortBy, //
+					direction, //
+					sortBy2, //
+					direction2//
+			);
+		} else {
+			books = bookService.search(//
+					title, //
+					isbn, //
+					author, //
+					inStock, //
+					fromDate, //
+					toDate, //
+					page, //
+					Math.min(size, 10), //
+					sortBy, //
+					direction, //
+					sortBy2, //
+					direction2//
+			);
+		}
 
 		Page<BookResponse> response = books.map(this::toResponse);
 
 		return ResponseEntity.ok(response);
+	}
+
+	// Backward-compatible search method for existing unit tests
+	public ResponseEntity<Page<BookResponse>> searchBooks(
+			String title,
+			String isbn,
+			int page,
+			int size,
+			String sortBy,
+			String direction,
+			String sortBy2,
+			String direction2) {
+		return searchBooks(title, isbn, null, null, null, null, page, size, sortBy, direction, sortBy2, direction2);
 	}
 
 	@GetMapping("/search-spec")
@@ -132,6 +171,7 @@ public class BookController {
 				book.getIsbn(), //
 				book.getQuantity(), //
 				book.getPublishedDate(), //
+				book.getImage(), //
 				authorNames//
 		);
 	}

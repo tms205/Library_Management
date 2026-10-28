@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,6 +29,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Book {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,10 +46,18 @@ public class Book {
 
 	private LocalDate publishedDate;
 
+	@Column(name = "image", length = 1000)
+	private String image;
+
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "book_authors", joinColumns = @JoinColumn(name = "book_id"), inverseJoinColumns = @JoinColumn(name = "author_id"))
 	private Set<Author> authors = new HashSet<>();
 
+	// BẮT BUỘC CÓ @JsonIgnore ĐỂ TRÁNH LỖI VÒNG LẶP VÔ TẬN KHI SERIALIZE SÁCH ĐÃ CÓ PHIẾU MƯỢN:
+	// Book -> BorrowRecord -> Book -> BorrowRecord... gây lỗi:
+	// "HttpMessageNotWritableException: Document nesting depth (501) exceeds the maximum allowed (500)"
+	// Khi sửa một cuốn sách cũ (đã có lịch sử mượn), nếu không có @JsonIgnore thì Jackson sẽ đệ quy vô tận.
+	@JsonIgnore
 	@OneToMany(mappedBy = "book", fetch = FetchType.LAZY)
 	private List<BorrowRecord> borrowRecords = new ArrayList<>();
 }

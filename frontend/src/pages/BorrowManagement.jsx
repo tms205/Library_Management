@@ -20,10 +20,48 @@ function BorrowManagement() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
 
-  const loadRecords = async () => {
+  // =========================================================================
+  // STATE BỘ LỌC TÌM KIẾM PHIẾU MƯỢN TRẢ
+  // - Ô nhập tạm thời (thay đổi khi gõ hoặc chọn ngày)
+  // - appliedFilters: chỉ cập nhật khi nhấn nút "Tìm kiếm" hoặc "Đặt lại"
+  // =========================================================================
+  const [filterMemberName, setFilterMemberName] = useState('');
+  const [filterBookTitle, setFilterBookTitle] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+
+  const [appliedFilters, setAppliedFilters] = useState({
+    memberName: '',
+    bookTitle: '',
+    fromDate: '',
+    toDate: '',
+    status: 'ALL',
+  });
+
+  const hasActiveFilters = Boolean(
+    appliedFilters.memberName ||
+    appliedFilters.bookTitle ||
+    appliedFilters.fromDate ||
+    appliedFilters.toDate ||
+    appliedFilters.status !== 'ALL',
+  );
+
+  const buildQueryParams = (filters) => {
+    const params = {};
+    if (filters.memberName?.trim()) params.memberName = filters.memberName.trim();
+    if (filters.bookTitle?.trim()) params.bookTitle = filters.bookTitle.trim();
+    if (filters.fromDate) params.fromDate = filters.fromDate;
+    if (filters.toDate) params.toDate = filters.toDate;
+    if (filters.status && filters.status !== 'ALL') params.status = filters.status;
+    return params;
+  };
+
+  const loadRecords = async (filters = appliedFilters) => {
     try {
       setLoading(true);
-      const response = await getBorrowManagement();
+      const queryParams = buildQueryParams(filters);
+      const response = await getBorrowManagement(queryParams);
       setRecords(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(error);
@@ -42,6 +80,37 @@ function BorrowManagement() {
   useEffect(() => {
     loadRecords();
   }, []);
+
+  const handleSearch = (e) => {
+    e?.preventDefault();
+    const nextFilters = {
+      memberName: filterMemberName,
+      bookTitle: filterBookTitle,
+      fromDate: filterFromDate,
+      toDate: filterToDate,
+      status: filterStatus,
+    };
+    setAppliedFilters(nextFilters);
+    loadRecords(nextFilters);
+  };
+
+  const handleReset = () => {
+    setFilterMemberName('');
+    setFilterBookTitle('');
+    setFilterFromDate('');
+    setFilterToDate('');
+    setFilterStatus('ALL');
+
+    const defaultFilters = {
+      memberName: '',
+      bookTitle: '',
+      fromDate: '',
+      toDate: '',
+      status: 'ALL',
+    };
+    setAppliedFilters(defaultFilters);
+    loadRecords(defaultFilters);
+  };
 
   const handleApprove = async (id) => {
     try {
@@ -131,6 +200,99 @@ function BorrowManagement() {
           </div>
         )}
 
+        {/* KHỐI BỘ LỌC TÌM KIẾM PHIẾU MƯỢN TRẢ */}
+        <section className="bm-search-card">
+          <div className="bm-search-header">
+            <div className="bm-search-title">
+              <span>🔍</span>
+              <span>Bộ lọc & Tìm kiếm phiếu mượn</span>
+            </div>
+            {hasActiveFilters && (
+              <span className="bm-filter-active-pill">Đang áp dụng bộ lọc</span>
+            )}
+          </div>
+
+          <form onSubmit={handleSearch} className="bm-search-form">
+            <div className="bm-search-grid">
+              <div className="bm-form-group">
+                <label htmlFor="filter-member">Tên độc giả</label>
+                <input
+                  id="filter-member"
+                  type="text"
+                  placeholder="Nhập tên độc giả..."
+                  value={filterMemberName}
+                  onChange={(e) => setFilterMemberName(e.target.value)}
+                />
+              </div>
+
+              <div className="bm-form-group">
+                <label htmlFor="filter-book">Tên sách</label>
+                <input
+                  id="filter-book"
+                  type="text"
+                  placeholder="Nhập tên sách..."
+                  value={filterBookTitle}
+                  onChange={(e) => setFilterBookTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="bm-form-group">
+                <label htmlFor="filter-from-date">Từ ngày</label>
+                <input
+                  id="filter-from-date"
+                  type="date"
+                  value={filterFromDate}
+                  onChange={(e) => setFilterFromDate(e.target.value)}
+                />
+              </div>
+
+              <div className="bm-form-group">
+                <label htmlFor="filter-to-date">Đến ngày</label>
+                <input
+                  id="filter-to-date"
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                />
+              </div>
+
+              <div className="bm-form-group">
+                <label htmlFor="filter-status">Trạng thái phiếu</label>
+                <select
+                  id="filter-status"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="PENDING">Chờ duyệt mượn (PENDING)</option>
+                  <option value="BORROWED">Đang mượn (BORROWED)</option>
+                  <option value="RETURN_PENDING">Chờ xác nhận trả (RETURN_PENDING)</option>
+                  <option value="RETURNED">Đã hoàn trả (RETURNED)</option>
+                  <option value="REJECTED">Đã từ chối (REJECTED)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="bm-search-actions">
+              <button
+                type="button"
+                className="bm-btn bm-btn-outline"
+                onClick={handleReset}
+                disabled={loading}
+              >
+                ↺ Đặt lại
+              </button>
+              <button
+                type="submit"
+                className="bm-btn bm-btn-primary"
+                disabled={loading}
+              >
+                🔍 Tìm kiếm
+              </button>
+            </div>
+          </form>
+        </section>
+
         <section className="bm-card">
           <div className="bm-card-header">
             <div>
@@ -142,11 +304,23 @@ function BorrowManagement() {
           </div>
 
           <div className="bm-toolbar">
+            <div className="bm-toolbar-summary">
+              {hasActiveFilters ? (
+                <span className="bm-summary-text">
+                  Tìm thấy <strong>{records.length}</strong> kết quả khớp bộ lọc
+                </span>
+              ) : (
+                <span className="bm-summary-text">
+                  Hiển thị <strong>{records.length}</strong> phiếu mượn
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
               className="bm-btn bm-btn-outline"
               disabled={loading}
-              onClick={loadRecords}
+              onClick={() => loadRecords(appliedFilters)}
             >
               <span>↻</span> Tải lại dữ liệu
             </button>

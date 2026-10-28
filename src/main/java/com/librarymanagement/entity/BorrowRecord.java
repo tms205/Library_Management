@@ -2,6 +2,8 @@ package com.librarymanagement.entity;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,6 +24,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 //phiếu/lịch sử mượn sách
 public class BorrowRecord {
 
@@ -35,6 +38,7 @@ public class BorrowRecord {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "book_id", nullable = false)
+	@JsonIgnoreProperties({"borrowRecords"})
 	private Book book;
 
 	private LocalDate borrowDate;

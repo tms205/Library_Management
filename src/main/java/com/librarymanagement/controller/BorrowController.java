@@ -1,8 +1,10 @@
 package com.librarymanagement.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,10 +14,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.librarymanagement.dto.request.BorrowBookRequest;
 import com.librarymanagement.dto.response.BorrowResponse;
+import com.librarymanagement.entity.BorrowStatus;
 import com.librarymanagement.service.BorrowService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -82,16 +86,26 @@ public class BorrowController {
 		return ResponseEntity.ok(response);
 	}
 
-	// =========================
-	// STAFF / ADMIN: DANH SACH QUAN LY MUON TRA
-	// =========================
-
+	// =========================================================================
+	// STAFF / ADMIN: DANH SÁCH QUẢN LÝ MƯỢN TRẢ (TÌM KIẾM THEO ĐỘC GIẢ, SÁCH, NGÀY, TRẠNG THÁI)
+	// =========================================================================
 	@GetMapping("/manage")
-	public ResponseEntity<List<BorrowResponse>> getBorrowManagement() {
+	public ResponseEntity<List<BorrowResponse>> getBorrowManagement(
+			@RequestParam(required = false) String memberName,
+			@RequestParam(required = false) String bookTitle,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam(required = false) BorrowStatus status) {
 
-		List<BorrowResponse> response = borrowService.getAllBorrowRecords();
+		List<BorrowResponse> response = borrowService.searchBorrowRecords(memberName, bookTitle, fromDate, toDate, date, status);
 
 		return ResponseEntity.ok(response);
+	}
+
+	// Overload không tham số giữ tương thích ngược
+	public ResponseEntity<List<BorrowResponse>> getBorrowManagement() {
+		return getBorrowManagement(null, null, null, null, null, null);
 	}
 
 	// =========================

@@ -21,5 +21,6 @@ public class BookResponse {
 	private String isbn;
 	private Integer quantity;
 	private LocalDate publishedDate;
+	private String image;
 	private Set<String> authorNames;// danh sách tên các tác giả
 }

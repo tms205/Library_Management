@@ -55,4 +55,12 @@ public class GlobalExceptionHandler {
 
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
 	}
+
+	@ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+	public ResponseEntity<Map<String, String>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException exception) {
+		Map<String, String> error = new HashMap<>();
+		error.put("message", "Không thể xóa bản ghi này vì đang có dữ liệu liên quan ràng buộc (ví dụ: phiếu mượn sách hoặc tài khoản đang được sử dụng)!");
+
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+	}
 }
