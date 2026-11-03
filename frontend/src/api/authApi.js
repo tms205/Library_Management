@@ -25,3 +25,11 @@ export const verifyEmail = (token) => {
     },
   });
 };
+
+export const verifyEmailOtp = (email, otp) => {
+  return axios.post(`${API_URL}/verify-email-otp`, { email, otp });
+};
+
+export const resendVerification = (email) => {
+  return axios.post(`${API_URL}/resend-verification`, null, { params: { email } });
+};

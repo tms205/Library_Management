@@ -17,6 +17,7 @@ import com.librarymanagement.dto.request.UpdateMemberRequest;
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.BorrowStatus;
 import com.librarymanagement.entity.Member;
+import com.librarymanagement.entity.Role;
 import com.librarymanagement.exception.BadRequestException;
 import com.librarymanagement.exception.ConflictException;
 import com.librarymanagement.exception.ResourceNotFoundException;
@@ -118,6 +119,11 @@ public class MemberService {
 			throw new BadRequestException("Độc giả này chưa liên kết với tài khoản hệ thống nào!");
 		}
 
+		// Không cho phép xóa tài khoản Quản trị viên (Admin)
+		if (account.getRole() == Role.ADMIN || "admin".equalsIgnoreCase(account.getEmail())) {
+			throw new BadRequestException("Không thể xóa tài khoản Quản trị viên (Admin)!");
+		}
+
 		// Chặn xóa nếu độc giả ĐANG CẦM SÁCH CHƯA TRẢ để bảo đảm tài sản thư viện
 		if (borrowRecordRepository != null) {
 			boolean hasActiveBorrow = borrowRecordRepository.existsByMember_IdAndStatus(id, BorrowStatus.BORROWED)
@@ -149,6 +155,11 @@ public class MemberService {
 		Account account = member.getAccount();
 		if (account == null) {
 			throw new BadRequestException("Độc giả này chưa liên kết với tài khoản hệ thống nào!");
+		}
+
+		// Không cho phép khóa tài khoản Quản trị viên (Admin)
+		if (account.getRole() == Role.ADMIN || "admin".equalsIgnoreCase(account.getEmail())) {
+			throw new BadRequestException("Không thể khóa tài khoản Quản trị viên (Admin)!");
 		}
 
 		if (enabled != null) {
@@ -210,6 +221,7 @@ public class MemberService {
 
 		Specification<Member> spec = //
 				MemberSpecification.isNotDeleted()//
+						.and(MemberSpecification.isNotAdmin())//
 						.and(MemberSpecification.hasFullName(fullName))//
 						.and(MemberSpecification.hasPhone(phone))//
 						.and(MemberSpecification.hasAddress(address))//

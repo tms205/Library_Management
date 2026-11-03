@@ -9,9 +9,9 @@ export const loginApi = async (email, password) => {
   return response.data;
 };
 
-export const logoutApi = async () => {
+export const logoutApi = async (refreshToken) => {
   try {
-    await client.post('/auth/logout');
+    await client.post('/auth/logout', { refreshToken: refreshToken || '' });
   } catch (err) {
     console.log('Logout API error:', err);
   }
@@ -19,6 +19,21 @@ export const logoutApi = async () => {
 
 export const registerApi = async (data) => {
   const response = await client.post('/auth/register', data);
+  return response.data;
+};
+
+export const verifyEmailOtpApi = async (email, otp) => {
+  const response = await client.post('/auth/verify-email-otp', {
+    email,
+    otp,
+  });
+  return response.data;
+};
+
+export const resendVerificationApi = async (email) => {
+  const response = await client.post('/auth/resend-verification', null, {
+    params: { email },
+  });
   return response.data;
 };
 

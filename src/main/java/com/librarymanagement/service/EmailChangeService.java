@@ -57,8 +57,8 @@ public class EmailChangeService {
 
 		emailChangeRequestRepository.save(changeRequest);
 
-		emailService.sendChangeEmailCode(newEmail, code);
-
+		// Gửi mã xác nhận về email hiện tại của tài khoản để bảo đảm an toàn chính chủ
+		emailService.sendChangeEmailCode(currentEmail, code, newEmail);
 	}
 
 	@Transactional

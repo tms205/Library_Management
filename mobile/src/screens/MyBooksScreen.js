@@ -105,26 +105,35 @@ export default function MyBooksScreen() {
       bg: 'rgba(148, 163, 184, 0.15)',
     };
     const canReturn = item.status === 'BORROWED';
+    const isCurrentlyOverdue = item.isOverdue && item.status === 'BORROWED';
     const isThisReturning = returningId === item.id;
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, isCurrentlyOverdue && { borderColor: '#ef4444', borderWidth: 1.5 }]}>
         <View style={styles.cardHeader}>
           <Text style={styles.bookTitle} numberOfLines={2}>
             {item.bookTitle}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>
-              {statusInfo.label}
+          <View style={[styles.statusBadge, { backgroundColor: isCurrentlyOverdue ? 'rgba(239, 68, 68, 0.2)' : statusInfo.bg }]}>
+            <Text style={[styles.statusText, { color: isCurrentlyOverdue ? '#f87171' : statusInfo.color }]}>
+              {isCurrentlyOverdue ? '⚠️ QUÁ HẠN' : statusInfo.label}
             </Text>
           </View>
         </View>
 
         <Text style={styles.dateText}>📅 Ngày mượn: {item.borrowDate || 'N/A'}</Text>
         <Text style={styles.dateText}>
-          {item.status === 'RETURNED' ? '✅ Ngày trả: ' : '⏳ Hạn trả: '}
-          {item.returnDate || 'Chưa xác định'}
+          ⏳ Hạn trả:{' '}
+          <Text style={{ fontWeight: '700', color: isCurrentlyOverdue ? '#f87171' : '#f8fafc' }}>
+            {item.dueDate || 'Chưa xác định'}
+          </Text>
+          {isCurrentlyOverdue && (
+            <Text style={{ color: '#ef4444', fontWeight: '700' }}> (Trễ {item.overdueDays} ngày)</Text>
+          )}
         </Text>
+        {item.returnDate && (
+          <Text style={styles.dateText}>✅ Ngày trả: {item.returnDate}</Text>
+        )}
 
         {canReturn && (
           <View style={styles.cardFooter}>

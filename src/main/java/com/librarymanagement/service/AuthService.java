@@ -8,6 +8,7 @@ import com.librarymanagement.dto.request.LoginRequest;
 import com.librarymanagement.dto.request.RegisterRequest;
 import com.librarymanagement.dto.response.LoginResponse;
 import com.librarymanagement.entity.Account;
+import com.librarymanagement.entity.EmailVerificationToken;
 import com.librarymanagement.entity.Member;
 import com.librarymanagement.entity.PermissionGroup;
 import com.librarymanagement.entity.RefreshToken;
@@ -123,10 +124,23 @@ public class AuthService {
 
 		memberRepository.save(member);
 
-		String token = //
+		EmailVerificationToken verificationToken = //
 				emailVerificationService.createVerificationToken(account);
 
-		emailService.sendVerificationEmail(account.getEmail(), token);
+		emailService.sendVerificationEmail(account.getEmail(), verificationToken.getToken(), verificationToken.getOtpCode());
+	}
+
+	@Transactional
+	public void resendVerification(String email) {
+		Account account = accountRepository.findByEmail(email.trim())
+				.orElseThrow(() -> new BadRequestException("Không tìm thấy tài khoản với email này!"));
+
+		if (Boolean.TRUE.equals(account.getEnabled())) {
+			throw new BadRequestException("Tài khoản này đã được kích hoạt trước đó rồi!");
+		}
+
+		EmailVerificationToken verificationToken = emailVerificationService.createVerificationToken(account);
+		emailService.sendVerificationEmail(account.getEmail(), verificationToken.getToken(), verificationToken.getOtpCode());
 	}
 
 	// =========================
@@ -151,12 +165,10 @@ public class AuthService {
 		if (!account.getEnabled()) {
 
 			throw new UnauthorizedException("Tài khoản đã bị khóa, vui lòng xác thực tài khoản email"//
-					+ "hoặc liên hệ Admin để được giải đáp");
+					+ " hoặc liên hệ Admin để được giải đáp");
 		}
 
-		// =========================
 		// MAINTENANCE
-		// =========================
 
 		if (systemConfigService.isMaintenanceMode()) {
 
@@ -243,12 +255,21 @@ public class AuthService {
 
 	@Transactional
 	public void logout(String email) {
+		if (email == null || email.isBlank()) {
+			return;
+		}
 
-		Account account = //
-				accountRepository.findByEmail(email).orElseThrow(() -> //
-				new UnauthorizedException("Không tìm thấy tài khoản!"));
+		Account account = accountRepository.findByEmail(email).orElse(null);
+		if (account != null) {
+			refreshTokenService.deleteByAccountId(account.getId());
+		}
+	}
 
-		refreshTokenService.deleteByAccountId(account.getId());
+	@Transactional
+	public void logoutByRefreshToken(String refreshToken) {
+		if (refreshToken != null && !refreshToken.isBlank()) {
+			refreshTokenService.deleteByToken(refreshToken);
+		}
 	}
 
 	// =========================

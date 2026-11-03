@@ -92,6 +92,12 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
+    const emailOrAdminRegex = /^(admin|[^\s@]+@[^\s@]+\.[^\s@]+)$/;
+    if (!emailOrAdminRegex.test(email.trim())) {
+      Alert.alert('Lỗi định dạng', 'Email không đúng định dạng (Ví dụ: user@example.com)!');
+      return;
+    }
+
     try {
       setLoading(true);
       await login(email.trim(), password);
@@ -109,7 +115,29 @@ export default function LoginScreen({ navigation }) {
           msg = err.message || 'Không thể kết nối đến máy chủ!';
         }
       }
-      Alert.alert('Đăng nhập thất bại', msg);
+
+      const isUnverified =
+        (err.response?.status === 403 || err.response?.status === 401) &&
+        typeof msg === 'string' &&
+        (msg.toLowerCase().includes('xác thực') ||
+          msg.toLowerCase().includes('xác thực') ||
+          msg.toLowerCase().includes('kích hoạt'));
+
+      if (isUnverified) {
+        Alert.alert(
+          'Tài khoản chưa kích hoạt',
+          `${msg}\n\nBạn có muốn nhập mã OTP để kích hoạt ngay bây giờ không?`,
+          [
+            { text: 'Đóng', style: 'cancel' },
+            {
+              text: 'Nhập mã OTP',
+              onPress: () => navigation.navigate('VerifyEmail', { email: email.trim() }),
+            },
+          ],
+        );
+      } else {
+        Alert.alert('Đăng nhập thất bại', msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -117,10 +145,16 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
+      >
         <View style={styles.header}>
           <Text style={styles.appIcon}>📚</Text>
           <Text style={styles.title}>Library Management</Text>
@@ -196,10 +230,14 @@ export default function LoginScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Links for Register & Forgot Password */}
+          {/* Links for Register, Forgot Password & Verify Email */}
           <View style={styles.authLinksRow}>
             <TouchableOpacity onPress={() => navigation?.navigate('ForgotPassword')}>
               <Text style={styles.authLinkText}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigation?.navigate('VerifyEmail', { email: email.trim() })}>
+              <Text style={styles.authLinkText}>Kích hoạt OTP</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation?.navigate('Register')}>

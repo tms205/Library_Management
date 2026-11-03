@@ -69,15 +69,21 @@ public class SecurityConfig {
 								"/auth/register", //
 								"/auth/login", //
 								"/auth/verify-email", //
+								"/auth/verify-email-otp", //
+								"/auth/resend-verification", //
 								"/auth/forgot-password", //
 								"/auth/reset-password", //
 								"/auth/refresh", //
+								"/auth/logout", //
 								"/api/auth/register", //
 								"/api/auth/login", //
 								"/api/auth/verify-email", //
+								"/api/auth/verify-email-otp", //
+								"/api/auth/resend-verification", //
 								"/api/auth/forgot-password", //
 								"/api/auth/reset-password", //
 								"/api/auth/refresh", //
+								"/api/auth/logout", //
 								"/error"//
 						)//
 						.permitAll()//
@@ -200,9 +206,10 @@ public class SecurityConfig {
 						)//
 						.hasAuthority("RETURN_BOOK")//
 
-						// MAINTENANCE
+						// ADMIN: QUẢN LÝ PHÂN QUYỀN VÀ HỆ THỐNG (CHỈ DÀNH RIÊNG CHO QUẢN TRỊ VIÊN)
 						.requestMatchers(//
-								"/api/system-config/**"//
+								"/api/system-config/**", //
+								"/api/admin/**"//
 						)//
 						.hasAuthority("SYSTEM_MAINTENANCE")//
 

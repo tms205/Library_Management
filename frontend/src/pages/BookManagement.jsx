@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { searchBooks, createBook, updateBook, deleteBook, importBooks } from '../api/bookApi';
 import { hasPermission } from '../utils/auth';
 
 import '../styles/books.css';
 
 function BookManagement() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTitle = searchParams.get('title') || '';
+
   // Quyền hạn thực tế từ JWT
   const canCreate = hasPermission('BOOK_CREATE');
   const canUpdate = hasPermission('BOOK_UPDATE');
@@ -16,7 +20,7 @@ function BookManagement() {
   const [books, setBooks] = useState([]);
 
   // State tạm thời của các ô nhập trong form bộ lọc (người dùng gõ ở đây)
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(urlTitle);
   const [isbn, setIsbn] = useState('');
   const [author, setAuthor] = useState('');
   const [stockStatus, setStockStatus] = useState('ALL'); // 'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK'
@@ -40,7 +44,7 @@ function BookManagement() {
   // Bộ lọc CHÍNH THỨC đang áp dụng gọi API (chỉ cập nhật khi bấm "Tìm kiếm" hoặc "Đặt lại")
   // Tách biệt với state ô nhập ở trên để tránh gõ 1 chữ lại gọi API 1 lần gây lag UI
   const [searchFilters, setSearchFilters] = useState({
-    title: '',
+    title: urlTitle,
     isbn: '',
     author: '',
     stockStatus: 'ALL',
@@ -49,6 +53,18 @@ function BookManagement() {
     sortBy: 'title',
     direction: 'asc',
   });
+
+  // Tự động đồng bộ và tìm kiếm khi nhận từ khóa ?title=... từ thanh tìm kiếm nhanh Topbar (Ctrl + K)
+  useEffect(() => {
+    if (urlTitle !== searchFilters.title) {
+      setTitle(urlTitle);
+      setPage(0);
+      setSearchFilters((prev) => ({
+        ...prev,
+        title: urlTitle,
+      }));
+    }
+  }, [urlTitle]);
 
   // Chế độ xem: 'grid' (dạng thẻ có ảnh bìa - mặc định) hoặc 'table' (dạng bảng truyền thống)
   const [viewMode, setViewMode] = useState('grid');
@@ -60,6 +76,8 @@ function BookManagement() {
     publishedDate: '',
     image: '',
   });
+
+  const [formErrors, setFormErrors] = useState({});
 
   const applyBookResponse = (response) => {
     const data = response.data;
@@ -129,6 +147,7 @@ function BookManagement() {
 
     const fetchBooks = async () => {
       try {
+        setLoading(true);
         const response = await searchBooks(buildQueryParams(page, searchFilters));
 
         if (cancelled) {
@@ -209,19 +228,31 @@ function BookManagement() {
       sortBy: 'title',
       direction: 'asc',
     });
+
+    if (searchParams.get('title')) {
+      setSearchParams({});
+    }
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
   };
 
   const openCreateForm = () => {
     setEditingBook(null);
+    setFormErrors({});
 
     setFormData({
       title: '',
@@ -236,6 +267,7 @@ function BookManagement() {
 
   const openEditForm = (book) => {
     setEditingBook(book);
+    setFormErrors({});
 
     setFormData({
       title: book.title || '',
@@ -248,8 +280,37 @@ function BookManagement() {
     setShowForm(true);
   };
 
+  const validateModalForm = () => {
+    const err = {};
+
+    if (!formData.title.trim()) {
+      err.title = 'Tên sách không được để trống!';
+    }
+
+    if (!formData.isbn.trim()) {
+      err.isbn = 'Mã ISBN không được để trống!';
+    }
+
+    if (formData.quantity === '' || formData.quantity === null || isNaN(formData.quantity)) {
+      err.quantity = 'Số lượng không được để trống!';
+    } else if (Number(formData.quantity) < 0) {
+      err.quantity = 'Số lượng phải lớn hơn hoặc bằng 0!';
+    }
+
+    if (!formData.publishedDate) {
+      err.publishedDate = 'Thời gian xuất bản không được để trống!';
+    }
+
+    setFormErrors(err);
+    return Object.keys(err).length === 0;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!validateModalForm()) {
+      return;
+    }
 
     try {
       const data = {
@@ -878,62 +939,67 @@ function BookManagement() {
               </button>
             </div>
 
-            <form className="gt-book-form" onSubmit={handleSubmit}>
+            <form className="gt-book-form" onSubmit={handleSubmit} noValidate>
               <div className="gt-field gt-field-full">
-                <label htmlFor="form-title">Tên sách</label>
+                <label htmlFor="form-title">Tên sách *</label>
 
                 <input
                   id="form-title"
                   type="text"
                   name="title"
+                  className={formErrors.title ? 'input-error' : ''}
                   placeholder="Nhập tên sách"
                   value={formData.title}
                   onChange={handleChange}
-                  required
                 />
+                {formErrors.title && <span className="field-error">{formErrors.title}</span>}
               </div>
 
               <div className="gt-form-grid">
                 <div className="gt-field">
-                  <label htmlFor="form-isbn">Mã ISBN</label>
+                  <label htmlFor="form-isbn">Mã ISBN *</label>
 
                   <input
                     id="form-isbn"
                     type="text"
                     name="isbn"
+                    className={formErrors.isbn ? 'input-error' : ''}
                     placeholder="Nhập ISBN"
                     value={formData.isbn}
                     onChange={handleChange}
-                    required
                   />
+                  {formErrors.isbn && <span className="field-error">{formErrors.isbn}</span>}
                 </div>
 
                 <div className="gt-field">
-                  <label htmlFor="form-quantity">Số lượng tồn kho</label>
+                  <label htmlFor="form-quantity">Số lượng tồn kho *</label>
 
                   <input
                     id="form-quantity"
                     type="number"
                     name="quantity"
+                    className={formErrors.quantity ? 'input-error' : ''}
                     min="0"
+                    placeholder="0"
                     value={formData.quantity}
                     onChange={handleChange}
-                    required
                   />
+                  {formErrors.quantity && <span className="field-error">{formErrors.quantity}</span>}
                 </div>
               </div>
 
               <div className="gt-field gt-field-full">
-                <label htmlFor="form-date">Ngày xuất bản</label>
+                <label htmlFor="form-date">Ngày xuất bản *</label>
 
                 <input
                   id="form-date"
                   type="date"
                   name="publishedDate"
+                  className={formErrors.publishedDate ? 'input-error' : ''}
                   value={formData.publishedDate}
                   onChange={handleChange}
-                  required
                 />
+                {formErrors.publishedDate && <span className="field-error">{formErrors.publishedDate}</span>}
               </div>
 
               <div className="gt-field gt-field-full">

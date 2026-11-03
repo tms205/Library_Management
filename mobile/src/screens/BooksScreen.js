@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Modal,
   ScrollView,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -36,7 +38,9 @@ export default function BooksScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const flatListRef = useRef(null);
   const [borrowingId, setBorrowingId] = useState(null);
   const [selectedBook, setSelectedBook] = useState(null);
 
@@ -76,15 +80,13 @@ export default function BooksScreen() {
   );
 
   // =========================================================================
-  // HÀM LẤY DANH SÁCH SÁCH TỪ BACKEND (HỖ TRỢ PHÂN TRANG INFINITE SCROLL & BỘ LỌC)
-  // - pageIndex = 0: tải trang đầu tiên (khi mở màn hình, tìm kiếm, hoặc pull-to-refresh)
-  // - pageIndex > 0: tải trang tiếp theo khi người dùng cuộn xuống đáy FlatList (load more)
+  // HÀM LẤY DANH SÁCH SÁCH TỪ BACKEND (HỖ TRỢ PHÂN TRANG CHUẨN & BỘ LỌC)
   // =========================================================================
   const fetchBooks = useCallback(
     async (pageIndex = 0, isRefresh = false, activeFilters = appliedFilters) => {
       try {
         if (isRefresh) setRefreshing(true);
-        else if (pageIndex === 0) setLoading(true);
+        else setLoading(true);
 
         // Map các tiêu chí lọc sang params cho Spring Boot Criteria API (/api/books/search)
         const params = {
@@ -104,13 +106,10 @@ export default function BooksScreen() {
         const data = await getBooksApi(params);
 
         const items = data.content || [];
-        // Nếu trang 0 thì ghi đè danh sách mới, nếu trang > 0 thì nối thêm vào danh sách cũ
-        if (pageIndex === 0) setBooks(items);
-        else setBooks((prev) => [...prev, ...items]);
-
-        setPage(pageIndex);
-        // data.last = true tức là backend báo đã hết trang, dừng không gọi fetch tiếp khi cuộn
-        setHasMore(!data.last && items.length > 0);
+        setBooks(items);
+        setPage(data.number ?? pageIndex);
+        setTotalPages(data.totalPages ?? 0);
+        setTotalElements(data.totalElements ?? 0);
       } catch (err) {
         console.log('Error fetching books:', err);
         Alert.alert(
@@ -124,6 +123,14 @@ export default function BooksScreen() {
     },
     [search, appliedFilters],
   );
+
+  const handleChangePage = (targetPage) => {
+    if (targetPage < 0 || (totalPages > 0 && targetPage >= totalPages) || loading) {
+      return;
+    }
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    fetchBooks(targetPage);
+  };
 
   useEffect(() => {
     fetchBooks(0);
@@ -453,6 +460,19 @@ export default function BooksScreen() {
         </View>
       )}
 
+      {/* Pagination Info Header Strip */}
+      <View style={styles.paginationHeaderStrip}>
+        <Text style={styles.paginationHeaderInfo}>
+          📚 Tổng: <Text style={styles.highlightText}>{totalElements}</Text> cuốn sách
+          {totalPages > 0 && (
+            <Text style={styles.pageCountText}>
+              {' '}• Trang <Text style={styles.highlightText}>{page + 1}</Text>/{totalPages}
+            </Text>
+          )}
+        </Text>
+        {loading && <ActivityIndicator size="small" color="#818cf8" />}
+      </View>
+
       {/* Book List */}
       {loading && books.length === 0 ? (
         <View style={styles.centerBox}>
@@ -461,6 +481,7 @@ export default function BooksScreen() {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={books}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderBookItem}
@@ -468,16 +489,46 @@ export default function BooksScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => fetchBooks(0, true)}
+              onRefresh={() => fetchBooks(page, true)}
               tintColor="#818cf8"
             />
           }
-          onEndReached={() => {
-            if (hasMore && !loading && !refreshing) {
-              fetchBooks(page + 1);
-            }
-          }}
-          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={styles.footerPaginationBox}>
+                <Text style={styles.footerPaginationTitle}>Chọn số trang nhanh:</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.footerPagePillsRow}
+                >
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.pagePill,
+                        page === idx && styles.pagePillActive,
+                      ]}
+                      disabled={page === idx || loading}
+                      onPress={() => handleChangePage(idx)}
+                    >
+                      <Text
+                        style={[
+                          styles.pagePillText,
+                          page === idx && styles.pagePillTextActive,
+                        ]}
+                      >
+                        {idx + 1}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={{ height: 75 }} />
+              </View>
+            ) : (
+              <View style={{ height: 75 }} />
+            )
+          }
           ListEmptyComponent={
             <View style={styles.centerBox}>
               <Text style={styles.emptyIcon}>🔍</Text>
@@ -485,6 +536,56 @@ export default function BooksScreen() {
             </View>
           }
         />
+      )}
+
+      {/* Sticky Bottom Pagination Bar */}
+      {totalPages > 1 && (
+        <View style={styles.bottomBarContainer}>
+          <TouchableOpacity
+            style={[
+              styles.navPageBtn,
+              (page === 0 || loading) && styles.navPageBtnDisabled,
+            ]}
+            disabled={page === 0 || loading}
+            onPress={() => handleChangePage(page - 1)}
+          >
+            <Text
+              style={[
+                styles.navPageBtnText,
+                (page === 0 || loading) && styles.navPageBtnTextDisabled,
+              ]}
+            >
+              ◀ Trước
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.navPageCenter}>
+            <Text style={styles.navPageCenterText}>
+              Trang <Text style={styles.navPageNumberBold}>{page + 1}</Text> / {totalPages}
+            </Text>
+            <Text style={styles.navPageCenterSub}>
+              ({books.length}/{totalElements} sách)
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.navPageBtn,
+              (page >= totalPages - 1 || loading) && styles.navPageBtnDisabled,
+            ]}
+            disabled={page >= totalPages - 1 || loading}
+            onPress={() => handleChangePage(page + 1)}
+          >
+            <Text
+              style={[
+                styles.navPageBtnText,
+                (page >= totalPages - 1 || loading) && styles.navPageBtnTextDisabled,
+              ]}
+            >
+              Sau ▶
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Book Detail Modal */}
@@ -586,9 +687,18 @@ export default function BooksScreen() {
         animationType="slide"
         onRequestClose={() => setBookModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 60 }}
+                automaticallyAdjustKeyboardInsets={true}
+              >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalHeaderTitle}>
                   {isEditing ? '✏️ Sửa thông tin sách' : '📚 Thêm sách mới'}
@@ -671,7 +781,8 @@ export default function BooksScreen() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+      </KeyboardAvoidingView>
+    </Modal>
 
       {/* Filter Modal */}
       <Modal
@@ -680,99 +791,109 @@ export default function BooksScreen() {
         animationType="slide"
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalHeaderTitle}>⚙️ Bộ lọc tìm kiếm sách</Text>
-                <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                  <Text style={styles.modalCloseText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.formLabel}>Tác giả</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Nhập tên tác giả..."
-                placeholderTextColor="#94a3b8"
-                value={filterAuthor}
-                onChangeText={setFilterAuthor}
-              />
-
-              <Text style={styles.formLabel}>Mã ISBN</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Nhập mã ISBN..."
-                placeholderTextColor="#94a3b8"
-                value={filterIsbn}
-                onChangeText={setFilterIsbn}
-              />
-
-              <Text style={styles.formLabel}>Tình trạng sách trong kho</Text>
-              <View style={styles.chipRow}>
-                {[
-                  { key: 'ALL', label: 'Tất cả' },
-                  { key: 'IN_STOCK', label: 'Còn sách' },
-                  { key: 'OUT_OF_STOCK', label: 'Hết hàng' },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.key}
-                    style={[
-                      styles.chip,
-                      filterStock === item.key && styles.chipActive,
-                    ]}
-                    onPress={() => setFilterStock(item.key)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        filterStock === item.key && styles.chipTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 60 }}
+                automaticallyAdjustKeyboardInsets={true}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalHeaderTitle}>⚙️ Bộ lọc tìm kiếm sách</Text>
+                  <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                    <Text style={styles.modalCloseText}>✕</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
+                </View>
 
-              <Text style={styles.formLabel}>Sắp xếp danh sách</Text>
-              <View style={styles.chipRow}>
-                {[
-                  { key: 'id-desc', label: 'Mới nhất', sortBy: 'id', dir: 'desc' },
-                  { key: 'title-asc', label: 'Tên A → Z', sortBy: 'title', dir: 'asc' },
-                  { key: 'title-desc', label: 'Tên Z → A', sortBy: 'title', dir: 'desc' },
-                  { key: 'quantity-desc', label: 'SL nhiều nhất', sortBy: 'quantity', dir: 'desc' },
-                ].map((item) => {
-                  const isActive = filterSortBy === item.sortBy && filterDirection === item.dir;
-                  return (
+                <Text style={styles.formLabel}>Tác giả</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Nhập tên tác giả..."
+                  placeholderTextColor="#94a3b8"
+                  value={filterAuthor}
+                  onChangeText={setFilterAuthor}
+                />
+
+                <Text style={styles.formLabel}>Mã ISBN</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Nhập mã ISBN..."
+                  placeholderTextColor="#94a3b8"
+                  value={filterIsbn}
+                  onChangeText={setFilterIsbn}
+                />
+
+                <Text style={styles.formLabel}>Tình trạng sách trong kho</Text>
+                <View style={styles.chipRow}>
+                  {[
+                    { key: 'ALL', label: 'Tất cả' },
+                    { key: 'IN_STOCK', label: 'Còn sách' },
+                    { key: 'OUT_OF_STOCK', label: 'Hết hàng' },
+                  ].map((item) => (
                     <TouchableOpacity
                       key={item.key}
-                      style={[styles.chip, isActive && styles.chipActive]}
-                      onPress={() => {
-                        setFilterSortBy(item.sortBy);
-                        setFilterDirection(item.dir);
-                      }}
+                      style={[
+                        styles.chip,
+                        filterStock === item.key && styles.chipActive,
+                      ]}
+                      onPress={() => setFilterStock(item.key)}
                     >
-                      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          filterStock === item.key && styles.chipTextActive,
+                        ]}
+                      >
                         {item.label}
                       </Text>
                     </TouchableOpacity>
-                  );
-                })}
-              </View>
+                  ))}
+                </View>
 
-              <View style={styles.filterModalBtnRow}>
-                <TouchableOpacity style={styles.resetFilterBtn} onPress={handleResetFilter}>
-                  <Text style={styles.resetFilterBtnText}>✕ Đặt lại</Text>
-                </TouchableOpacity>
+                <Text style={styles.formLabel}>Sắp xếp danh sách</Text>
+                <View style={styles.chipRow}>
+                  {[
+                    { key: 'id-desc', label: 'Mới nhất', sortBy: 'id', dir: 'desc' },
+                    { key: 'title-asc', label: 'Tên A → Z', sortBy: 'title', dir: 'asc' },
+                    { key: 'title-desc', label: 'Tên Z → A', sortBy: 'title', dir: 'desc' },
+                    { key: 'quantity-desc', label: 'SL nhiều nhất', sortBy: 'quantity', dir: 'desc' },
+                  ].map((item) => {
+                    const isActive = filterSortBy === item.sortBy && filterDirection === item.dir;
+                    return (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={[styles.chip, isActive && styles.chipActive]}
+                        onPress={() => {
+                          setFilterSortBy(item.sortBy);
+                          setFilterDirection(item.dir);
+                        }}
+                      >
+                        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-                <TouchableOpacity style={styles.applyFilterBtn} onPress={handleApplyFilter}>
-                  <Text style={styles.applyFilterBtnText}>✓ Áp dụng</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+                <View style={styles.filterModalBtnRow}>
+                  <TouchableOpacity style={styles.resetFilterBtn} onPress={handleResetFilter}>
+                    <Text style={styles.resetFilterBtnText}>✕ Đặt lại</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.applyFilterBtn} onPress={handleApplyFilter}>
+                    <Text style={styles.applyFilterBtnText}>✓ Áp dụng</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1072,6 +1193,9 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 15,
   },
+  keyboardAvoidingOverlay: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -1222,5 +1346,123 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+  },
+  paginationHeaderStrip: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  paginationHeaderInfo: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  highlightText: {
+    color: '#818cf8',
+    fontWeight: '700',
+  },
+  pageCountText: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  footerPaginationBox: {
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  footerPaginationTitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  footerPagePillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  pagePill: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  pagePillActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#6366f1',
+  },
+  pagePillText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pagePillTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1e293b',
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  navPageBtn: {
+    backgroundColor: '#4f46e5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  navPageBtnDisabled: {
+    backgroundColor: '#334155',
+    opacity: 0.5,
+  },
+  navPageBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  navPageBtnTextDisabled: {
+    color: '#64748b',
+  },
+  navPageCenter: {
+    alignItems: 'center',
+  },
+  navPageCenterText: {
+    color: '#f8fafc',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  navPageNumberBold: {
+    color: '#818cf8',
+    fontWeight: '700',
+  },
+  navPageCenterSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
   },
 });

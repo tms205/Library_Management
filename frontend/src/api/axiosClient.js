@@ -123,8 +123,15 @@ axiosClient.interceptors.request.use(
     /*
      * Nếu token đã hết hạn:
      * refresh TRƯỚC khi gửi request lên backend.
+     * (Ngoại trừ trường hợp đang gọi API logout hoặc refresh để tránh vòng lặp)
      */
     if (isTokenExpired(accessToken)) {
+      if (config.url?.includes('/auth/logout') || config.url?.includes('/auth/refresh')) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${accessToken}`;
+        return config;
+      }
+
       try {
         accessToken = await refreshAccessToken();
       } catch (refreshError) {
@@ -164,6 +171,11 @@ axiosClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    // Không lặp lại retry nếu chính request logout hoặc refresh bị lỗi
+    if (originalRequest.url?.includes('/auth/logout') || originalRequest.url?.includes('/auth/refresh')) {
       return Promise.reject(error);
     }
 

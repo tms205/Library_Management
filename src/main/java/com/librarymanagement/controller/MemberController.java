@@ -152,6 +152,10 @@ public class MemberController {
 				? 1
 				: 0;
 
+		String role = (member.getAccount() != null && member.getAccount().getRole() != null)
+				? member.getAccount().getRole().name()
+				: "USER";
+
 		return new MemberResponse(//
 				member.getId(), //
 				member.getFullName(), //
@@ -161,7 +165,8 @@ public class MemberController {
 				member.getAccount() != null ? member.getAccount().getId() : null, //
 				member.getAccount() != null ? member.getAccount().getEmail() : null, //
 				enabled, //
-				isDelete //
+				isDelete, //
+				role //
 		);
 	}
 }

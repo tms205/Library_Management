@@ -4,6 +4,17 @@ import { hasPermission } from '../utils/auth';
 
 import '../styles/members.css';
 
+// Kiểm tra tài khoản Quản trị viên (Admin) để không hiển thị trong danh sách độc giả thư viện
+const isMemberAdmin = (m) => {
+  if (!m) return false;
+  return (
+    m.role === 'ADMIN' ||
+    m.email?.toLowerCase() === 'admin' ||
+    m.fullName?.toLowerCase() === 'admin' ||
+    m.accountId === 1
+  );
+};
+
 function MemberManagement() {
   // Quyền hạn thực tế từ JWT
   const canCreate = hasPermission('MEMBER_CREATE');
@@ -41,100 +52,92 @@ function MemberManagement() {
     address: '',
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const [formErrors, setFormErrors] = useState({});
 
-    const loadMembers = async () => {
-      try {
-        const response = await searchMembers({
-          fullName: searchFilters.fullName || undefined,
-          phone: searchFilters.phone || undefined,
-          address: searchFilters.address || undefined,
-          page,
-          size: 10,
-          sortBy: 'fullName',
-          direction: 'asc',
-        });
+  const loadMembers = async (targetPage = 0, filters = searchFilters) => {
+    try {
+      setLoading(true);
+      const response = await searchMembers({
+        fullName: filters.fullName?.trim() || undefined,
+        phone: filters.phone?.trim() || undefined,
+        address: filters.address?.trim() || undefined,
+        page: targetPage,
+        size: 10,
+        sortBy: 'fullName',
+        direction: 'asc',
+      });
 
-        if (cancelled) {
-          return;
-        }
+      const data = response.data;
 
-        const data = response.data;
-
-        let list = [];
-        if (Array.isArray(data?.content)) {
-          list = data.content;
-          setTotalPages(data.totalPages ?? 0);
-        } else if (Array.isArray(data)) {
-          list = data;
-          setTotalPages(data.length > 0 ? 1 : 0);
-        } else {
-          setTotalPages(0);
-        }
-
-        // Ẩn các thành viên đã bị xóa (is_delete = 1)
-        const visible = list.filter((m) => m.is_delete !== 1 && m.isDelete !== 1);
-        setMembers(visible);
-
-        setMessage('');
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        console.error(error);
-
-        setMembers([]);
+      let list = [];
+      if (Array.isArray(data?.content)) {
+        list = data.content;
+        setTotalPages(data.totalPages ?? 0);
+      } else if (Array.isArray(data)) {
+        list = data;
+        setTotalPages(data.length > 0 ? 1 : 0);
+      } else {
         setTotalPages(0);
-        setMessageType('error');
-
-        setMessage(error.response?.data?.message || 'Không thể tải danh sách thành viên!');
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
       }
-    };
 
-    loadMembers();
+      // Ẩn các tài khoản Admin và các thành viên đã bị xóa (is_delete = 1)
+      const visible = list.filter(
+        (m) => m.is_delete !== 1 && m.isDelete !== 1 && !isMemberAdmin(m)
+      );
+      setMembers(visible);
+      setPage(targetPage);
+      setMessage('');
+    } catch (error) {
+      console.error(error);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [page, searchFilters.fullName, searchFilters.phone, searchFilters.address]);
+      setMembers([]);
+      setTotalPages(0);
+      setMessageType('error');
+
+      setMessage(error.response?.data?.message || 'Không thể tải danh sách thành viên!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMembers(0, { fullName: '', phone: '', address: '' });
+  }, []);
 
   const handleSearch = (event) => {
-    event.preventDefault();
+    event?.preventDefault();
 
-    setLoading(true);
     setMessage('');
-    setPage(0);
 
-    setSearchFilters({
+    const nextFilters = {
       fullName: fullName.trim(),
       phone: phone.trim(),
       address: address.trim(),
-    });
+    };
+
+    setSearchFilters(nextFilters);
+    loadMembers(0, nextFilters);
   };
 
   const handleResetSearch = () => {
     setFullName('');
     setPhone('');
     setAddress('');
+    setMessage('');
 
-    setLoading(true);
-    setPage(0);
-
-    setSearchFilters({
+    const emptyFilters = {
       fullName: '',
       phone: '',
       address: '',
-    });
+    };
+
+    setSearchFilters(emptyFilters);
+    loadMembers(0, emptyFilters);
   };
 
   const openCreateForm = () => {
     setEditingMember(null);
+    setFormErrors({});
 
     setFormData({
       accountId: '',
@@ -149,6 +152,7 @@ function MemberManagement() {
 
   const openEditForm = (member) => {
     setEditingMember(member);
+    setFormErrors({});
 
     setFormData({
       accountId: member.accountId || '',
@@ -164,52 +168,70 @@ function MemberManagement() {
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+  };
+
+  const validateModalForm = () => {
+    const err = {};
+    const phoneRegex = /^0\d{9}$/;
+
+    if (!editingMember) {
+      if (!formData.accountId || Number(formData.accountId) <= 0) {
+        err.accountId = 'Vui lòng nhập Account ID hợp lệ (> 0)!';
+      }
+    }
+
+    if (!formData.fullName.trim()) {
+      err.fullName = 'Họ và tên không được để trống!';
+    } else if (formData.fullName.trim().length < 2) {
+      err.fullName = 'Họ và tên phải có ít nhất 2 ký tự!';
+    }
+
+    if (!formData.dateOfBirth) {
+      err.dateOfBirth = 'Ngày sinh không được để trống!';
+    } else {
+      const birthDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (birthDate >= today) {
+        err.dateOfBirth = 'Ngày sinh phải là ngày trong quá khứ!';
+      }
+    }
+
+    if (!formData.phone.trim()) {
+      err.phone = 'Số điện thoại không được để trống!';
+    } else if (!phoneRegex.test(formData.phone.trim())) {
+      err.phone = 'Số điện thoại phải gồm 10 số và bắt đầu bằng số 0 (Ví dụ: 0912345678)!';
+    }
+
+    if (!formData.address.trim()) {
+      err.address = 'Địa chỉ không được để trống!';
+    }
+
+    setFormErrors(err);
+    return Object.keys(err).length === 0;
   };
 
   const reloadCurrentPage = async () => {
-    try {
-      setLoading(true);
-
-      const response = await searchMembers({
-        fullName: searchFilters.fullName || undefined,
-        phone: searchFilters.phone || undefined,
-        address: searchFilters.address || undefined,
-        page,
-        size: 10,
-        sortBy: 'fullName',
-        direction: 'asc',
-      });
-
-      const data = response.data;
-
-      let list = [];
-      if (Array.isArray(data?.content)) {
-        list = data.content;
-        setTotalPages(data.totalPages ?? 0);
-      } else if (Array.isArray(data)) {
-        list = data;
-        setTotalPages(data.length > 0 ? 1 : 0);
-      }
-
-      // Ẩn các thành viên đã bị xóa (is_delete = 1)
-      const visible = list.filter((m) => m.is_delete !== 1 && m.isDelete !== 1);
-      setMembers(visible);
-    } catch (error) {
-      console.error(error);
-
-      setMessageType('error');
-      setMessage(error.response?.data?.message || 'Không thể tải lại danh sách thành viên!');
-    } finally {
-      setLoading(false);
-    }
+    await loadMembers(page, searchFilters);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!validateModalForm()) {
+      return;
+    }
 
     try {
       if (editingMember) {
@@ -454,7 +476,7 @@ function MemberManagement() {
                   </thead>
 
                   <tbody>
-                    {members.filter((m) => m.is_delete !== 1 && m.isDelete !== 1).length === 0 ? (
+                    {members.filter((m) => m.is_delete !== 1 && m.isDelete !== 1 && !isMemberAdmin(m)).length === 0 ? (
                       <tr>
                         <td colSpan={hasRowActions ? 9 : 8}>
                           <div className="member-empty">
@@ -466,7 +488,7 @@ function MemberManagement() {
                       </tr>
                     ) : (
                       members
-                        .filter((m) => m.is_delete !== 1 && m.isDelete !== 1)
+                        .filter((m) => m.is_delete !== 1 && m.isDelete !== 1 && !isMemberAdmin(m))
                         .map((member) => (
                         <tr key={member.id}>
                           <td className="member-mono">#{member.id}</td>
@@ -572,10 +594,9 @@ function MemberManagement() {
             <div className="member-pagination">
               <button
                 type="button"
-                disabled={page === 0}
+                disabled={page === 0 || loading}
                 onClick={() => {
-                  setLoading(true);
-                  setPage((current) => current - 1);
+                  loadMembers(page - 1, searchFilters);
                 }}
               >
                 ‹
@@ -585,10 +606,9 @@ function MemberManagement() {
 
               <button
                 type="button"
-                disabled={totalPages === 0 || page >= totalPages - 1}
+                disabled={totalPages === 0 || page >= totalPages - 1 || loading}
                 onClick={() => {
-                  setLoading(true);
-                  setPage((current) => current + 1);
+                  loadMembers(page + 1, searchFilters);
                 }}
               >
                 ›
@@ -619,74 +639,79 @@ function MemberManagement() {
               </button>
             </div>
 
-            <form className="member-form" onSubmit={handleSubmit}>
+            <form className="member-form" onSubmit={handleSubmit} noValidate>
               {!editingMember && (
                 <div className="member-field">
-                  <label>Account ID</label>
+                  <label>Account ID *</label>
 
                   <input
                     type="number"
                     name="accountId"
+                    className={formErrors.accountId ? 'input-error' : ''}
                     min="1"
                     placeholder="Nhập ID tài khoản đã tồn tại"
                     value={formData.accountId}
                     onChange={handleChange}
-                    required
                   />
+                  {formErrors.accountId && <span className="field-error">{formErrors.accountId}</span>}
                 </div>
               )}
 
               <div className="member-field">
-                <label>Họ và tên</label>
+                <label>Họ và tên *</label>
 
                 <input
                   type="text"
                   name="fullName"
+                  className={formErrors.fullName ? 'input-error' : ''}
                   placeholder="Nhập họ và tên"
                   value={formData.fullName}
                   onChange={handleChange}
-                  required
                 />
+                {formErrors.fullName && <span className="field-error">{formErrors.fullName}</span>}
               </div>
 
               <div className="member-form-grid">
                 <div className="member-field">
-                  <label>Ngày sinh</label>
+                  <label>Ngày sinh *</label>
 
                   <input
                     type="date"
                     name="dateOfBirth"
+                    className={formErrors.dateOfBirth ? 'input-error' : ''}
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    required
                   />
+                  {formErrors.dateOfBirth && <span className="field-error">{formErrors.dateOfBirth}</span>}
                 </div>
 
                 <div className="member-field">
-                  <label>Số điện thoại</label>
+                  <label>Số điện thoại *</label>
 
                   <input
                     type="text"
                     name="phone"
-                    placeholder="Nhập số điện thoại"
+                    className={formErrors.phone ? 'input-error' : ''}
+                    placeholder="Ví dụ: 0912345678"
                     value={formData.phone}
                     onChange={handleChange}
-                    required
                   />
+                  {formErrors.phone && <span className="field-error">{formErrors.phone}</span>}
                 </div>
               </div>
 
               <div className="member-field">
-                <label>Địa chỉ</label>
+                <label>Địa chỉ *</label>
 
                 <input
                   type="text"
                   name="address"
+                  className={formErrors.address ? 'input-error' : ''}
                   placeholder="Nhập địa chỉ"
                   value={formData.address}
                   onChange={handleChange}
-                  required
                 />
+                {formErrors.address && <span className="field-error">{formErrors.address}</span>}
               </div>
 
               <div className="member-modal-footer">

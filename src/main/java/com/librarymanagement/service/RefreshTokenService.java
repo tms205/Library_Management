@@ -60,4 +60,12 @@ public class RefreshTokenService {
 
 		refreshTokenRepository.deleteByAccount_Id(accountId);
 	}
+
+	@Transactional
+	public void deleteByToken(String token) {
+		if (token != null && !token.isBlank()) {
+			refreshTokenRepository.findByToken(token)
+					.ifPresent(refreshTokenRepository::delete);
+		}
+	}
 }

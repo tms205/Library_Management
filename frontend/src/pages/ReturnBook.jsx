@@ -111,11 +111,11 @@ function ReturnBook() {
             </div>
           ) : borrowedBooks.length === 0 ? (
             <div className="return-empty" style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>📭</div>
-              <strong style={{ display: 'block', fontSize: '16px', color: '#1e293b', marginBottom: '6px' }}>
+              <div style={{ fontSize: '42px', marginBottom: '12px' }}>📭</div>
+              <strong style={{ display: 'block', fontSize: '18px', color: '#1e293b', marginBottom: '6px' }}>
                 Bạn chưa có yêu cầu mượn sách nào
               </strong>
-              <span style={{ fontSize: '14px', color: '#64748b' }}>
+              <span style={{ fontSize: '16px', color: '#64748b' }}>
                 Hãy vào mục <strong>Mượn sách</strong> để chọn các cuốn sách yêu thích từ thư viện.
               </span>
             </div>
@@ -128,6 +128,7 @@ function ReturnBook() {
                     <th>Book ID</th>
                     <th>Tên sách</th>
                     <th>Ngày mượn</th>
+                    <th>Hạn trả</th>
                     <th>Ngày trả</th>
                     <th>Trạng thái</th>
                     <th style={{ textAlign: 'center' }}>Thao tác</th>
@@ -135,34 +136,51 @@ function ReturnBook() {
                 </thead>
 
                 <tbody>
-                  {borrowedBooks.map((item) => (
-                    <tr key={item.id}>
-                      <td className="return-mono">#{item.id}</td>
-                      <td className="return-mono">#{item.bookId}</td>
-                      <td className="return-book-name">{item.bookTitle}</td>
-                      <td>{item.borrowDate || '—'}</td>
-                      <td>{item.returnDate || '—'}</td>
-                      <td>
-                        <StatusBadge status={item.status} />
-                      </td>
+                  {borrowedBooks.map((item) => {
+                    const isCurrentlyOverdue = item.isOverdue && item.status === 'BORROWED';
+
+                    return (
+                      <tr key={item.id} style={isCurrentlyOverdue ? { backgroundColor: '#fff5f5' } : {}}>
+                        <td className="return-mono">#{item.id}</td>
+                        <td className="return-mono">#{item.bookId}</td>
+                        <td className="return-book-name">{item.bookTitle}</td>
+                        <td>{item.borrowDate || '—'}</td>
+                        <td>
+                          <div style={{ fontWeight: item.dueDate ? 600 : 400 }}>{item.dueDate || '—'}</div>
+                          {isCurrentlyOverdue && (
+                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#b91c1c', fontWeight: 700, background: '#fee2e2', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
+                              ⚠️ Quá hạn ({item.overdueDays} ngày)
+                            </span>
+                          )}
+                          {!item.isOverdue && item.status === 'BORROWED' && item.dueDate && (
+                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#047857', fontWeight: 600, background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
+                              🟢 Còn hạn
+                            </span>
+                          )}
+                        </td>
+                        <td>{item.returnDate || '—'}</td>
+                        <td>
+                          <StatusBadge status={item.status} />
+                        </td>
                       <td style={{ textAlign: 'center' }}>
                         {/* Chỉ hiện nút Yêu cầu trả khi sách đang ở trạng thái BORROWED và user có quyền RETURN_BOOK */}
                         {item.status === 'BORROWED' && canReturn ? (
                           <button
                             type="button"
                             className="return-btn return-btn-primary"
-                            style={{ padding: '6px 14px', fontSize: '13px' }}
+                            style={{ padding: '6px 14px', fontSize: '15px' }}
                             disabled={actionLoadingId === item.id}
                             onClick={() => handleRequestReturn(item.id)}
                           >
                             {actionLoadingId === item.id ? 'Đang gửi...' : 'Yêu cầu trả'}
                           </button>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                          <span style={{ color: '#94a3b8', fontSize: '15px' }}>—</span>
                         )}
                       </td>
                     </tr>
-                  ))}
+                  );
+                })}
                 </tbody>
               </table>
             </div>

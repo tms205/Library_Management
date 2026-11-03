@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { requestChangeEmail, confirmChangeEmail } from '../api/changeEmailApi';
+import { getUserInfo } from '../utils/auth';
 
 import '../styles/changeEmail.css';
 
 function ChangeEmail() {
   const navigate = useNavigate();
+  const currentUser = getUserInfo();
 
   const [newEmail, setNewEmail] = useState('');
   const [code, setCode] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [codeError, setCodeError] = useState('');
   const [step, setStep] = useState(1);
 
   const [loading, setLoading] = useState(false);
@@ -23,18 +27,32 @@ function ChangeEmail() {
 
     setMessage('');
     setError('');
+    setEmailError('');
 
-    if (!newEmail.trim()) {
-      setError('Vui lòng nhập địa chỉ email mới!');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmed = newEmail.trim();
+
+    if (!trimmed) {
+      setEmailError('Vui lòng nhập địa chỉ email mới!');
+      return;
+    }
+
+    if (!emailRegex.test(trimmed)) {
+      setEmailError('Email không đúng định dạng (Ví dụ: user@example.com)!');
+      return;
+    }
+
+    if (currentUser?.email && trimmed.toLowerCase() === currentUser.email.toLowerCase()) {
+      setEmailError('Email mới không được trùng với email hiện tại!');
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await requestChangeEmail(newEmail.trim());
+      const response = await requestChangeEmail(trimmed);
 
-      setMessage(response.data || 'Mã xác nhận đã được gửi đến email mới của bạn.');
+      setMessage(response.data || 'Mã xác nhận đã được gửi đến email hiện tại của bạn.');
       setStep(2);
     } catch (err) {
       console.error(err);
@@ -59,9 +77,17 @@ function ChangeEmail() {
 
     setMessage('');
     setError('');
+    setCodeError('');
 
-    if (!code.trim()) {
-      setError('Vui lòng nhập mã xác nhận!');
+    const trimmedCode = code.trim();
+
+    if (!trimmedCode) {
+      setCodeError('Vui lòng nhập mã xác nhận!');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(trimmedCode)) {
+      setCodeError('Mã xác nhận phải gồm đúng 6 chữ số!');
       return;
     }
 
@@ -102,7 +128,7 @@ function ChangeEmail() {
         <div className="change-email-header">
           <p>Library / Account Settings</p>
           <h1>Đổi địa chỉ email</h1>
-          <span>Xác minh địa chỉ email mới trước khi cập nhật tài khoản thư viện.</span>
+          <span>Xác minh mã bảo mật gửi về email hiện tại trước khi cập nhật sang địa chỉ mới.</span>
         </div>
 
         <div className="change-email-steps">
@@ -121,16 +147,20 @@ function ChangeEmail() {
         {message && <div className="change-email-success">{message}</div>}
 
         {step === 1 && (
-          <form onSubmit={handleRequestCode}>
+          <form onSubmit={handleRequestCode} noValidate>
             <div className="change-email-field">
-              <label>Địa chỉ email mới</label>
+              <label>Địa chỉ email mới *</label>
               <input
                 type="email"
+                className={emailError ? 'input-error' : ''}
                 placeholder="example@gmail.com"
                 value={newEmail}
-                onChange={(event) => setNewEmail(event.target.value)}
-                required
+                onChange={(event) => {
+                  setNewEmail(event.target.value);
+                  if (emailError) setEmailError('');
+                }}
               />
+              {emailError && <span className="field-error">{emailError}</span>}
             </div>
 
             <button type="submit" className="change-email-button" disabled={loading}>
@@ -140,21 +170,30 @@ function ChangeEmail() {
         )}
 
         {step === 2 && (
-          <form onSubmit={handleConfirm}>
+          <form onSubmit={handleConfirm} noValidate>
             <div className="change-email-current">
-              Mã xác nhận 6 số đã được gửi tới:
-              <strong>{newEmail}</strong>
+              Mã xác nhận 6 số đã được gửi tới email hiện tại của bạn:
+              <strong>{currentUser?.email || 'email hiện tại'}</strong>
+              <div style={{ marginTop: '8px', fontSize: '15px', color: '#64748b' }}>
+                (Yêu cầu đổi sang email mới: <strong>{newEmail}</strong>)
+              </div>
             </div>
 
             <div className="change-email-field">
-              <label>Mã xác nhận</label>
+              <label>Mã xác nhận (6 số) *</label>
               <input
                 type="text"
-                placeholder="Nhập mã xác nhận..."
+                className={codeError ? 'input-error' : ''}
+                placeholder="Nhập mã xác nhận 6 số..."
                 value={code}
-                onChange={(event) => setCode(event.target.value)}
-                required
+                maxLength={6}
+                onChange={(event) => {
+                  const val = event.target.value.replace(/\D/g, '');
+                  setCode(val);
+                  if (codeError) setCodeError('');
+                }}
               />
+              {codeError && <span className="field-error">{codeError}</span>}
             </div>
 
             <button type="submit" className="change-email-button" disabled={loading}>

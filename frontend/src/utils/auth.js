@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosClient from '../api/axiosClient';
 
 // Helper functions quản lý token và kiểm tra quyền hạn (permissions) thực tế từ JWT
 
@@ -134,28 +134,24 @@ export const getUserInfo = (token = getAccessToken()) => {
 };
 
 /**
- * Đăng xuất: gọi API blacklist token, xóa token và chuyển hướng về trang login
+ * Đăng xuất: gọi API blacklist access token & thu hồi refresh token trong DB,
+ * dọn sạch storage và chuyển hướng về trang login
  */
 export const logout = async () => {
-  const token = getAccessToken();
+  const refreshToken = getRefreshToken();
 
-  if (token) {
-    try {
-      await axios.post(
-        'http://localhost:8080/auth/logout',
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-    } catch (error) {
-      console.error('Lỗi khi gọi API logout:', error);
-    }
+  try {
+    // Gọi API logout qua axiosClient để đính kèm access token hiện tại
+    // và gửi kèm refresh token để backend thu hồi triệt để trong cơ sở dữ liệu
+    await axiosClient.post('/auth/logout', {
+      refreshToken: refreshToken || '',
+    });
+  } catch (error) {
+    console.warn('Lỗi khi gọi API logout:', error?.response?.data || error?.message);
+  } finally {
+    // Luôn dọn dẹp sạch sẽ storage và chuyển hướng về trang đăng nhập
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = '/login';
   }
-
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  window.location.href = '/login';
 };

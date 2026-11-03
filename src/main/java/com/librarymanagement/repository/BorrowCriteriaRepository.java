@@ -65,11 +65,12 @@ public class BorrowCriteriaRepository {
 			));
 		}
 
-		// 3. Tìm theo một ngày cụ thể (khớp với ngày mượn hoặc ngày trả)
+		// 3. Tìm theo một ngày cụ thể (khớp với ngày mượn, hạn trả hoặc ngày trả)
 		if (date != null) {
 			Predicate matchBorrowDate = cb.equal(root.get("borrowDate"), date);
+			Predicate matchDueDate = cb.equal(root.get("dueDate"), date);
 			Predicate matchReturnDate = cb.equal(root.get("returnDate"), date);
-			predicates.add(cb.or(matchBorrowDate, matchReturnDate));
+			predicates.add(cb.or(matchBorrowDate, matchDueDate, matchReturnDate));
 		}
 
 		// 4. Lọc theo khoảng ngày (từ ngày... đến ngày...)

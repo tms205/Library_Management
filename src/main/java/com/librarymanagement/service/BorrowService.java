@@ -1,6 +1,7 @@
 package com.librarymanagement.service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -241,6 +242,8 @@ public class BorrowService {
 		// Cap nhat record
 		record.setStatus(BorrowStatus.BORROWED);
 		record.setBorrowDate(LocalDate.now());
+		// Quy định thời hạn mượn chuẩn: 14 ngày (2 tuần) kể từ ngày duyệt
+		record.setDueDate(LocalDate.now().plusDays(14));
 		record.setReturnDate(null);
 
 		BorrowRecord savedRecord = borrowRecordRepository.save(record);
@@ -316,9 +319,43 @@ public class BorrowService {
 	// =========================
 
 	private BorrowResponse toResponse(BorrowRecord record) {
+		LocalDate borrowDate = record.getBorrowDate();
+		LocalDate dueDate = record.getDueDate();
+		LocalDate returnDate = record.getReturnDate();
+		BorrowStatus status = record.getStatus();
 
-		return new BorrowResponse(record.getId(), record.getMember().getId(), record.getMember().getFullName(),
-				record.getBook().getId(), record.getBook().getTitle(), record.getBorrowDate(), record.getReturnDate(),
-				record.getStatus());
+		boolean isOverdue = false;
+		long overdueDays = 0;
+
+		// Tự động kiểm tra quá hạn sách:
+		if (dueDate != null) {
+			if (status == BorrowStatus.BORROWED || status == BorrowStatus.RETURN_PENDING) {
+				// Đang cầm sách: nếu ngày hiện tại đã vượt quá hạn trả
+				if (LocalDate.now().isAfter(dueDate)) {
+					isOverdue = true;
+					overdueDays = ChronoUnit.DAYS.between(dueDate, LocalDate.now());
+				}
+			} else if (status == BorrowStatus.RETURNED && returnDate != null) {
+				// Đã trả sách: kiểm tra ngày trả thực tế có bị trễ hạn hay không
+				if (returnDate.isAfter(dueDate)) {
+					isOverdue = true;
+					overdueDays = ChronoUnit.DAYS.between(dueDate, returnDate);
+				}
+			}
+		}
+
+		return new BorrowResponse(
+				record.getId(),
+				record.getMember().getId(),
+				record.getMember().getFullName(),
+				record.getBook().getId(),
+				record.getBook().getTitle(),
+				borrowDate,
+				dueDate,
+				returnDate,
+				status,
+				isOverdue,
+				overdueDays
+		);
 	}
 }

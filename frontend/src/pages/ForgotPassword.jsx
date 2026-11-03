@@ -6,6 +6,7 @@ import '../styles/auth.css';
 
 function ForgotPassword() {
   const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,9 +16,17 @@ function ForgotPassword() {
     event.preventDefault();
 
     setMessage('');
+    setEmailError('');
 
-    if (!email) {
-      setMessage('Vui lòng nhập email!');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email.trim()) {
+      setEmailError('Vui lòng nhập địa chỉ email!');
+      return;
+    }
+
+    if (!emailRegex.test(email.trim())) {
+      setEmailError('Email không đúng định dạng (Ví dụ: user@example.com)!');
       return;
     }
 
@@ -25,13 +34,13 @@ function ForgotPassword() {
       setLoading(true);
 
       await forgotPassword({
-        email: email,
+        email: email.trim(),
       });
 
-      setMessage('Mã OTP đã được gửi tới email!');
+      setMessage('Mã OTP đã được gửi tới email của bạn!');
 
       setTimeout(() => {
-        navigate(`/reset-password?email=${encodeURIComponent(email)}`);
+        navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`);
       }, 1000);
     } catch (error) {
       console.error(error);
@@ -59,14 +68,19 @@ function ForgotPassword() {
 
         <form onSubmit={handleForgotPassword}>
           <div className="form-group">
-            <label>Email</label>
+            <label>Email *</label>
 
             <input
               type="email"
-              placeholder="Nhập email"
+              className={emailError ? 'input-error' : ''}
+              placeholder="Nhập email đã đăng ký"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (emailError) setEmailError('');
+              }}
             />
+            {emailError && <span className="field-error">{emailError}</span>}
           </div>
 
           {message && <p className="auth-message">{message}</p>}

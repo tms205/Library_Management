@@ -28,6 +28,9 @@ public class EmailVerificationToken {
 	@Column(nullable = false, unique = true)
 	private String token;
 
+	@Column(name = "otp_code", length = 10)
+	private String otpCode;
+
 	@Column(name = "expires_at", nullable = false)
 	private LocalDateTime expiresAt;
 

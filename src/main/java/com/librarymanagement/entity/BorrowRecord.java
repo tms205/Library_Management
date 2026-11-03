@@ -42,6 +42,8 @@ public class BorrowRecord {
 	private Book book;
 
 	private LocalDate borrowDate;
+	// Hạn chót trả sách (mặc định borrowDate + 14 ngày khi thủ thư duyệt phiếu)
+	private LocalDate dueDate;
 	private LocalDate returnDate;
 
 	@Enumerated(EnumType.STRING)

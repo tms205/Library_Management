@@ -35,7 +35,7 @@
 .bm-page-pretitle {
   margin-bottom: 6px;
   color: var(--bm-primary);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -43,7 +43,7 @@
 
 .bm-page-header h1 {
   margin: 0 0 6px;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -51,7 +51,7 @@
 .bm-page-header p {
   margin: 0;
   color: var(--bm-text-secondary);
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .bm-btn {
@@ -62,7 +62,7 @@
   justify-content: center;
   gap: 8px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
@@ -102,7 +102,7 @@
   color: white;
   height: 34px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: 15px;
   border-radius: 8px;
 }
 
@@ -115,7 +115,7 @@
   color: white;
   height: 34px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: 15px;
   border-radius: 8px;
 }
 
@@ -128,7 +128,7 @@
   color: white;
   height: 34px;
   padding: 0 12px;
-  font-size: 13px;
+  font-size: 15px;
   border-radius: 8px;
 }
 
@@ -143,7 +143,7 @@
   align-items: center;
   gap: 12px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   border: 1px solid transparent;
 }
@@ -171,7 +171,7 @@
   margin-left: auto;
   border: none;
   color: currentColor;
-  font-size: 20px;
+  font-size: 22px;
   background: transparent;
   cursor: pointer;
 }
@@ -197,14 +197,14 @@
 
 .bm-card-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
 }
 
 .bm-card-header p {
   margin: 4px 0 0;
   color: var(--bm-text-muted);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .bm-card-badge {
@@ -212,7 +212,7 @@
   border: 1px solid #e0e4fb;
   border-radius: 8px;
   color: var(--bm-primary-dark);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   background: var(--bm-primary-soft);
 }
@@ -235,13 +235,13 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .bm-table th {
   padding: 14px 16px;
   color: var(--bm-text-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -262,7 +262,7 @@
 
 .bm-mono {
   font-family: Consolas, "Courier New", monospace;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--bm-text-secondary);
 }
@@ -284,7 +284,7 @@
   align-items: center;
   padding: 5px 9px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -301,7 +301,7 @@
   align-items: center;
   justify-content: center;
   color: var(--bm-text-muted);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -330,7 +330,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--bm-text);
 }
@@ -342,7 +342,7 @@
   border-radius: 999px;
   background: #eff6ff;
   color: #2563eb;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   border: 1px solid #bfdbfe;
 }
@@ -361,7 +361,7 @@
 }
 
 .bm-form-group label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--bm-text-secondary);
 }
@@ -372,7 +372,7 @@
   padding: 0 12px;
   border: 1px solid var(--bm-border);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--bm-text);
   background: #f8fafc;
   transition: all 0.2s ease;
@@ -410,7 +410,7 @@
 }
 
 .bm-summary-text {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--bm-text-secondary);
 }
 

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import com.librarymanagement.entity.BorrowRecord;
 import com.librarymanagement.entity.Member;
+import com.librarymanagement.entity.Role;
 
 public class MemberSpecification {
 
@@ -93,6 +94,20 @@ public class MemberSpecification {
 			return cb.or(
 					cb.isNull(accountJoin.get("isDelete")),
 					cb.equal(accountJoin.get("isDelete"), false)
+			);
+		};
+	}
+
+	// Lọc bỏ tài khoản Admin - không hiển thị ở danh sách thành viên/độc giả
+	public static Specification<Member> isNotAdmin() {
+		return (root, query, cb) -> {
+			var accountJoin = root.join("account", jakarta.persistence.criteria.JoinType.LEFT);
+			return cb.and(
+					cb.or(
+							cb.isNull(accountJoin.get("role")),
+							cb.notEqual(accountJoin.get("role"), Role.ADMIN)
+					),
+					cb.notEqual(cb.lower(accountJoin.get("email")), "admin")
 			);
 		};
 	}

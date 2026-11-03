@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,22 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { searchMembersApi, updateMemberApi, deleteMemberApi, toggleMemberStatusApi } from '../api/memberApi';
+
+// Không hiển thị tài khoản Quản trị viên (Admin) trong danh sách độc giả
+const isMemberAdmin = (m) => {
+  if (!m) return false;
+  return (
+    m.role === 'ADMIN' ||
+    m.accountEmail?.toLowerCase() === 'admin' ||
+    m.email?.toLowerCase() === 'admin' ||
+    m.fullName?.toLowerCase() === 'admin' ||
+    m.accountId === 1
+  );
+};
 
 export default function MemberManagementScreen() {
   const [members, setMembers] = useState([]);
@@ -20,7 +34,9 @@ export default function MemberManagementScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const flatListRef = useRef(null);
 
   // Edit Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -34,7 +50,7 @@ export default function MemberManagementScreen() {
   const fetchMembers = useCallback(async (pageIndex = 0, isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
-      else if (pageIndex === 0) setLoading(true);
+      else setLoading(true);
 
       const data = await searchMembersApi({
         fullName: search.trim() || undefined,
@@ -43,12 +59,14 @@ export default function MemberManagementScreen() {
       });
 
       const allItems = data.content || [];
-      const items = allItems.filter((m) => m.is_delete !== 1 && m.isDelete !== 1);
-      if (pageIndex === 0) setMembers(items);
-      else setMembers((prev) => [...prev, ...items]);
-
-      setPage(pageIndex);
-      setHasMore(!data.last && items.length > 0);
+      // Lọc bỏ tài khoản đã xóa mềm hoặc tài khoản Quản trị viên (Admin không thuộc nhóm độc giả)
+      const items = allItems.filter(
+        (m) => m.is_delete !== 1 && m.isDelete !== 1 && !isMemberAdmin(m)
+      );
+      setMembers(items);
+      setPage(data.number ?? pageIndex);
+      setTotalPages(data.totalPages ?? 0);
+      setTotalElements(data.totalElements ?? 0);
     } catch (err) {
       console.log('Error fetching members:', err);
       Alert.alert('Lỗi', err.response?.data?.message || err.message || 'Không thể tải danh sách độc giả!');
@@ -57,6 +75,14 @@ export default function MemberManagementScreen() {
       setRefreshing(false);
     }
   }, [search]);
+
+  const handleChangePage = (targetPage) => {
+    if (targetPage < 0 || (totalPages > 0 && targetPage >= totalPages) || loading) {
+      return;
+    }
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    fetchMembers(targetPage);
+  };
 
   useEffect(() => {
     fetchMembers(0);
@@ -149,6 +175,11 @@ export default function MemberManagementScreen() {
   };
 
   const renderMemberItem = ({ item }) => {
+    // Không hiển thị nếu là Admin hoặc đã bị xóa mềm
+    if (isMemberAdmin(item) || item.is_delete === 1 || item.isDelete === 1) {
+      return null;
+    }
+
     const isLocked = item.enabled === false;
     return (
       <View style={[styles.card, isLocked && styles.cardLocked]}>
@@ -211,6 +242,19 @@ export default function MemberManagementScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Pagination Info Header Strip */}
+      <View style={styles.paginationHeaderStrip}>
+        <Text style={styles.paginationHeaderInfo}>
+          👥 Tổng: <Text style={styles.highlightText}>{totalElements}</Text> độc giả
+          {totalPages > 0 && (
+            <Text style={styles.pageCountText}>
+              {' '}• Trang <Text style={styles.highlightText}>{page + 1}</Text>/{totalPages}
+            </Text>
+          )}
+        </Text>
+        {loading && <ActivityIndicator size="small" color="#818cf8" />}
+      </View>
+
       {loading && members.length === 0 ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color="#4f46e5" />
@@ -218,6 +262,7 @@ export default function MemberManagementScreen() {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={members}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderMemberItem}
@@ -225,14 +270,46 @@ export default function MemberManagementScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => fetchMembers(0, true)}
+              onRefresh={() => fetchMembers(page, true)}
               tintColor="#818cf8"
             />
           }
-          onEndReached={() => {
-            if (hasMore && !loading && !refreshing) fetchMembers(page + 1);
-          }}
-          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={styles.footerPaginationBox}>
+                <Text style={styles.footerPaginationTitle}>Chọn số trang nhanh:</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.footerPagePillsRow}
+                >
+                  {Array.from({ length: totalPages }).map((_, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.pagePill,
+                        page === idx && styles.pagePillActive,
+                      ]}
+                      disabled={page === idx || loading}
+                      onPress={() => handleChangePage(idx)}
+                    >
+                      <Text
+                        style={[
+                          styles.pagePillText,
+                          page === idx && styles.pagePillTextActive,
+                        ]}
+                      >
+                        {idx + 1}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <View style={{ height: 75 }} />
+              </View>
+            ) : (
+              <View style={{ height: 75 }} />
+            )
+          }
           ListEmptyComponent={
             <View style={styles.centerBox}>
               <Text style={styles.emptyIcon}>👥</Text>
@@ -242,6 +319,56 @@ export default function MemberManagementScreen() {
         />
       )}
 
+      {/* Sticky Bottom Pagination Bar */}
+      {totalPages > 1 && (
+        <View style={styles.bottomBarContainer}>
+          <TouchableOpacity
+            style={[
+              styles.navPageBtn,
+              (page === 0 || loading) && styles.navPageBtnDisabled,
+            ]}
+            disabled={page === 0 || loading}
+            onPress={() => handleChangePage(page - 1)}
+          >
+            <Text
+              style={[
+                styles.navPageBtnText,
+                (page === 0 || loading) && styles.navPageBtnTextDisabled,
+              ]}
+            >
+              ◀ Trước
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.navPageCenter}>
+            <Text style={styles.navPageCenterText}>
+              Trang <Text style={styles.navPageNumberBold}>{page + 1}</Text> / {totalPages}
+            </Text>
+            <Text style={styles.navPageCenterSub}>
+              ({members.length}/{totalElements} độc giả)
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.navPageBtn,
+              (page >= totalPages - 1 || loading) && styles.navPageBtnDisabled,
+            ]}
+            disabled={page >= totalPages - 1 || loading}
+            onPress={() => handleChangePage(page + 1)}
+          >
+            <Text
+              style={[
+                styles.navPageBtnText,
+                (page >= totalPages - 1 || loading) && styles.navPageBtnTextDisabled,
+              ]}
+            >
+              Sau ▶
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Edit Member Modal */}
       <Modal
         visible={editModalVisible}
@@ -249,67 +376,77 @@ export default function MemberManagementScreen() {
         animationType="slide"
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Sửa thông tin độc giả</Text>
-                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                  <Text style={styles.modalClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.modalLabel}>Họ và tên *</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Nguyễn Văn A"
-                placeholderTextColor="#94a3b8"
-              />
-
-              <Text style={styles.modalLabel}>Số điện thoại *</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="0912345678"
-                placeholderTextColor="#94a3b8"
-                keyboardType="phone-pad"
-              />
-
-              <Text style={styles.modalLabel}>Địa chỉ *</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Hà Nội"
-                placeholderTextColor="#94a3b8"
-              />
-
-              <Text style={styles.modalLabel}>Ngày sinh (YYYY-MM-DD) *</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={dateOfBirth}
-                onChangeText={setDateOfBirth}
-                placeholder="2000-01-15"
-                placeholderTextColor="#94a3b8"
-              />
-
-              <TouchableOpacity
-                style={[styles.saveBtn, saving && styles.btnDisabled]}
-                onPress={handleSaveEdit}
-                disabled={saving}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 60 }}
+                automaticallyAdjustKeyboardInsets={true}
               >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Sửa thông tin độc giả</Text>
+                  <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.modalLabel}>Họ và tên *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Nguyễn Văn A"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <Text style={styles.modalLabel}>Số điện thoại *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="0912345678"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.modalLabel}>Địa chỉ *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Hà Nội"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <Text style={styles.modalLabel}>Ngày sinh (YYYY-MM-DD) *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={dateOfBirth}
+                  onChangeText={setDateOfBirth}
+                  placeholder="2000-01-15"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <TouchableOpacity
+                  style={[styles.saveBtn, saving && styles.btnDisabled]}
+                  onPress={handleSaveEdit}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -501,6 +638,9 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 15,
   },
+  keyboardAvoidingOverlay: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -562,5 +702,123 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  paginationHeaderStrip: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  paginationHeaderInfo: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  highlightText: {
+    color: '#818cf8',
+    fontWeight: '700',
+  },
+  pageCountText: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  footerPaginationBox: {
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  footerPaginationTitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  footerPagePillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  pagePill: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  pagePillActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#6366f1',
+  },
+  pagePillText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pagePillTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1e293b',
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  navPageBtn: {
+    backgroundColor: '#4f46e5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  navPageBtnDisabled: {
+    backgroundColor: '#334155',
+    opacity: 0.5,
+  },
+  navPageBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  navPageBtnTextDisabled: {
+    color: '#64748b',
+  },
+  navPageCenter: {
+    alignItems: 'center',
+  },
+  navPageCenterText: {
+    color: '#f8fafc',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  navPageNumberBold: {
+    color: '#818cf8',
+    fontWeight: '700',
+  },
+  navPageCenterSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
   },
 });

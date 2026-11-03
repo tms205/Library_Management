@@ -23,18 +23,42 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!fullName || !email || !password || !dateOfBirth || !phone || !address) {
+    if (!fullName.trim() || !email.trim() || !password || !dateOfBirth.trim() || !phone.trim() || !address.trim()) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ tất cả các trường thông tin!');
       return;
     }
 
-    if (!/^0\d{9}$/.test(phone.trim())) {
-      Alert.alert('Lỗi', 'Số điện thoại phải gồm 10 số và bắt đầu bằng số 0!');
+    if (fullName.trim().length < 2) {
+      Alert.alert('Lỗi', 'Họ và tên phải có ít nhất 2 ký tự!');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Lỗi', 'Email không đúng định dạng (Ví dụ: user@example.com)!');
       return;
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
       Alert.alert('Lỗi', 'Ngày sinh phải có định dạng YYYY-MM-DD (Ví dụ: 2000-01-15)!');
+      return;
+    }
+
+    const birthDate = new Date(dateOfBirth.trim());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (birthDate >= today) {
+      Alert.alert('Lỗi', 'Ngày sinh phải là ngày trong quá khứ!');
+      return;
+    }
+
+    if (!/^0\d{9}$/.test(phone.trim())) {
+      Alert.alert('Lỗi', 'Số điện thoại phải gồm 10 số và bắt đầu bằng số 0 (Ví dụ: 0912345678)!');
+      return;
+    }
+
+    if (password.length < 4) {
+      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 4 ký tự!');
       return;
     }
 
@@ -51,8 +75,18 @@ export default function RegisterScreen({ navigation }) {
 
       Alert.alert(
         'Đăng ký thành công 🎉',
-        'Vui lòng kiểm tra hộp thư email của bạn và click vào link xác minh trước khi đăng nhập.',
-        [{ text: 'Đến Đăng nhập', onPress: () => navigation.navigate('Login') }],
+        'Mã OTP 6 chữ số (và liên kết xác nhận) đã được gửi đến email của bạn. Bạn có muốn nhập mã OTP để kích hoạt ngay?',
+        [
+          {
+            text: 'Để sau',
+            style: 'cancel',
+            onPress: () => navigation.navigate('Login'),
+          },
+          {
+            text: 'Nhập mã OTP',
+            onPress: () => navigation.navigate('VerifyEmail', { email: email.trim() }),
+          },
+        ],
       );
     } catch (err) {
       const msg =
@@ -68,10 +102,16 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 160 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Tạo tài khoản mới</Text>
           <Text style={styles.subtitle}>Đăng ký làm độc giả của Library Management</Text>

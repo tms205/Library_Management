@@ -27,6 +27,12 @@ export default function ForgotPasswordScreen({ navigation }) {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Lỗi định dạng', 'Email không đúng định dạng (Ví dụ: user@example.com)!');
+      return;
+    }
+
     try {
       setLoading(true);
       await forgotPasswordApi(email.trim());
@@ -47,6 +53,10 @@ export default function ForgotPasswordScreen({ navigation }) {
   const handleResetPassword = async () => {
     if (!otp.trim() || !newPassword || !confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ OTP và mật khẩu mới!');
+      return;
+    }
+    if (!/^\d{6}$/.test(otp.trim())) {
+      Alert.alert('Lỗi định dạng', 'Mã OTP phải gồm đúng 6 chữ số!');
       return;
     }
     if (newPassword.length < 6) {
@@ -78,10 +88,16 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 20}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Quên mật khẩu</Text>
           <Text style={styles.subtitle}>

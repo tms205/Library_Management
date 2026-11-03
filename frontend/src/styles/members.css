@@ -67,7 +67,7 @@
 
   color: var(--member-primary);
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
 
   letter-spacing: 1.2px;
@@ -77,7 +77,7 @@
 .member-page-header h1 {
   margin: 0;
 
-  font-size: 37px;
+  font-size: 39px;
   line-height: 1.2;
   font-weight: 800;
   letter-spacing: -0.7px;
@@ -86,7 +86,7 @@
 .member-page-header p {
   margin: 7px 0 0;
 
-  font-size: 17px;
+  font-size: 19px;
   line-height: 1.6;
   font-weight: 500;
 
@@ -117,7 +117,7 @@
   border-radius: 10px;
 
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 
   text-decoration: none;
@@ -192,7 +192,7 @@
   border: 1px solid var(--member-border);
   border-radius: 10px;
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -228,7 +228,7 @@
 
   color: currentColor;
 
-  font-size: 20px;
+  font-size: 22px;
 
   background: transparent;
 
@@ -276,14 +276,14 @@
 .member-card-header h2 {
   margin: 0;
 
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 800;
 }
 
 .member-card-header p {
   margin: 4px 0 0;
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 
   color: var(--member-text-muted);
@@ -297,7 +297,7 @@
 
   color: var(--member-primary-dark);
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 
   background: var(--member-primary-soft);
@@ -329,7 +329,7 @@
 
   margin-bottom: 7px;
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 
   color: var(--member-text-secondary);
@@ -347,7 +347,7 @@
   outline: none;
 
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
 
   color: var(--member-text);
 
@@ -385,7 +385,7 @@
 
   border-collapse: collapse;
 
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .member-table th {
@@ -395,7 +395,7 @@
 
   border-bottom: 1px solid var(--member-border);
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
 
   letter-spacing: 0.4px;
@@ -448,7 +448,7 @@
 
   color: var(--member-primary-dark);
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 
   background: var(--member-primary-soft);
@@ -463,7 +463,7 @@
     "Liberation Mono",
     monospace;
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -498,7 +498,7 @@
   color: #4338ca;
 
   font: inherit;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 
   background: #f8f9ff;
@@ -556,7 +556,7 @@
   gap: 5px;
   padding: 4px 10px;
   border-radius: 9999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -585,7 +585,7 @@
   justify-content: center;
   gap: 10px;
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 
   color: var(--member-text-muted);
@@ -634,7 +634,7 @@
 
   color: var(--member-primary-dark);
 
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
 
   background: var(--member-primary-soft);
@@ -645,13 +645,13 @@
 
   color: var(--member-text);
 
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .member-empty span {
   color: var(--member-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* =========================
@@ -672,7 +672,7 @@
 
   color: var(--member-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
 
   background: #fcfcfe;
 }
@@ -696,7 +696,7 @@
 
   border-radius: 8px;
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -776,7 +776,7 @@
 .member-modal-header span {
   color: var(--member-primary);
 
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 
   letter-spacing: 1px;
@@ -785,7 +785,7 @@
 .member-modal-header h2 {
   margin: 3px 0 0;
 
-  font-size: 23px;
+  font-size: 25px;
   font-weight: 800;
 }
 
@@ -798,7 +798,7 @@
 
   color: #64748b;
 
-  font-size: 23px;
+  font-size: 25px;
 
   background: transparent;
 
@@ -864,7 +864,7 @@
   }
 
   .member-page-header h1 {
-    font-size: 31px;
+    font-size: 33px;
   }
 
   .member-page-actions {

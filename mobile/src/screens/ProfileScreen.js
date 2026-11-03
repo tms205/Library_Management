@@ -10,6 +10,8 @@ import {
   Modal,
   ActivityIndicator,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { getBaseUrl, setBaseUrl, DEFAULT_BASE_URL } from '../config';
@@ -22,6 +24,11 @@ import {
   getSystemConfigApi,
   updateMaintenanceApi,
 } from '../api/systemConfigApi';
+import {
+  getPermissionGroupsApi,
+  searchAccountsForRolesApi,
+  updateAccountRoleApi,
+} from '../api/roleApi';
 
 export default function ProfileScreen() {
   const { userInfo, logout } = useAuth();
@@ -50,6 +57,17 @@ export default function ProfileScreen() {
   const [newEmail, setNewEmail] = useState('');
   const [emailCode, setEmailCode] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
+
+  // Modal quản lý phân quyền (Admin)
+  const [rolesModalVisible, setRolesModalVisible] = useState(false);
+  const [roleGroups, setRoleGroups] = useState([]);
+  const [roleAccounts, setRoleAccounts] = useState([]);
+  const [roleSearch, setRoleSearch] = useState('');
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [selectedRoleAccount, setSelectedRoleAccount] = useState(null);
+  const [editRoleModalVisible, setEditRoleModalVisible] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [roleSaving, setRoleSaving] = useState(false);
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
@@ -90,6 +108,10 @@ export default function ProfileScreen() {
       Alert.alert('Lỗi', 'Mật khẩu mới phải có ít nhất 6 ký tự!');
       return;
     }
+    if (oldPassword === newPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu mới không được trùng với mật khẩu hiện tại!');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp!');
       return;
@@ -119,15 +141,30 @@ export default function ProfileScreen() {
   // XỬ LÝ ĐỔI EMAIL
   // ==========================
   const handleRequestEmailCode = async () => {
-    if (!newEmail.trim()) {
+    const trimmed = newEmail.trim();
+    if (!trimmed) {
       Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email mới!');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      Alert.alert('Lỗi định dạng', 'Email không đúng định dạng (Ví dụ: user@example.com)!');
+      return;
+    }
+
+    if (userInfo?.email && trimmed.toLowerCase() === userInfo.email.toLowerCase()) {
+      Alert.alert('Lỗi', 'Email mới không được trùng với email hiện tại!');
       return;
     }
 
     try {
       setChangingEmail(true);
-      await requestChangeEmailApi(newEmail.trim());
-      Alert.alert('Thành công', `Mã xác nhận 6 chữ số đã được gửi tới ${newEmail.trim()}`);
+      await requestChangeEmailApi(trimmed);
+      Alert.alert(
+        'Thành công',
+        `Mã xác nhận bảo mật 6 chữ số đã được gửi tới email hiện tại của bạn (${userInfo?.email || 'email hiện tại'}).`,
+      );
       setEmailStep(2);
     } catch (err) {
       Alert.alert('Lỗi', err.response?.data?.message || 'Không thể gửi mã xác nhận đổi email!');
@@ -137,7 +174,8 @@ export default function ProfileScreen() {
   };
 
   const handleConfirmChangeEmail = async () => {
-    if (!emailCode.trim() || emailCode.trim().length !== 6) {
+    const trimmedCode = emailCode.trim();
+    if (!trimmedCode || !/^\d{6}$/.test(trimmedCode)) {
       Alert.alert('Lỗi', 'Mã xác nhận phải gồm đúng 6 chữ số!');
       return;
     }
@@ -195,6 +233,70 @@ export default function ProfileScreen() {
     );
   };
 
+  // ==========================
+  // XỬ LÝ PHÂN QUYỀN TÀI KHOẢN (ADMIN)
+  // ==========================
+  const fetchRoleAccounts = async (keyword = roleSearch) => {
+    try {
+      setRoleLoading(true);
+      const data = await searchAccountsForRolesApi({
+        search: keyword.trim() || undefined,
+        page: 0,
+        size: 50,
+      });
+      setRoleAccounts(data.content || []);
+    } catch (err) {
+      console.log('Error loading accounts for role:', err);
+      Alert.alert('Lỗi', err.response?.data?.message || 'Không thể tải danh sách tài khoản!');
+    } finally {
+      setRoleLoading(false);
+    }
+  };
+
+  const handleOpenRolesModal = async () => {
+    setRolesModalVisible(true);
+    try {
+      const groups = await getPermissionGroupsApi();
+      setRoleGroups(groups || []);
+    } catch (err) {
+      console.log('Error loading groups:', err);
+    }
+    fetchRoleAccounts('');
+  };
+
+  const handleSelectAccountForRole = (acc) => {
+    if (acc.accountId === 1 || acc.email?.toLowerCase() === 'admin') {
+      Alert.alert('Thông báo', 'Không thể thay đổi quyền của tài khoản Quản trị viên tối cao (Admin)!');
+      return;
+    }
+    if (userInfo?.email && acc.email?.toLowerCase() === userInfo.email.toLowerCase()) {
+      Alert.alert('Thông báo', 'Bạn không thể tự thay đổi quyền của chính tài khoản mình đang đăng nhập!');
+      return;
+    }
+
+    setSelectedRoleAccount(acc);
+    setSelectedGroupId(acc.groupId || (roleGroups[0]?.id ?? null));
+    setEditRoleModalVisible(true);
+  };
+
+  const handleSaveRoleChange = async () => {
+    if (!selectedRoleAccount || !selectedGroupId) return;
+
+    try {
+      setRoleSaving(true);
+      await updateAccountRoleApi(selectedRoleAccount.accountId, selectedGroupId);
+      const targetGroup = roleGroups.find((g) => g.id === selectedGroupId);
+      Alert.alert('Thành công', `Đã cập nhật nhóm quyền cho "${selectedRoleAccount.email}" thành "${targetGroup?.name || 'Nhóm mới'}"!`);
+      setEditRoleModalVisible(false);
+      fetchRoleAccounts(roleSearch);
+    } catch (err) {
+      console.log('Error updating role:', err);
+      Alert.alert('Lỗi', err.response?.data?.message || 'Không thể cập nhật quyền cho tài khoản này!');
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert('Xác nhận đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?', [
       { text: 'Hủy', style: 'cancel' },
@@ -211,9 +313,20 @@ export default function ProfileScreen() {
   const initial = email.charAt(0).toUpperCase();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Profile Card */}
-      <View style={styles.profileCard}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
+      >
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
         </View>
@@ -260,7 +373,18 @@ export default function ProfileScreen() {
       {/* Admin Maintenance Section */}
       {canManageMaintenance && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ Cấu hình Hệ thống (Admin)</Text>
+          <Text style={styles.sectionTitle}>⚙️ Quản trị Hệ thống (Admin)</Text>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={handleOpenRolesModal}
+          >
+            <View style={styles.actionRowLeft}>
+              <Text style={styles.actionIcon}>🛡️</Text>
+              <Text style={styles.actionLabel}>Phân quyền tài khoản</Text>
+            </View>
+            <Text style={styles.arrowText}>➔</Text>
+          </TouchableOpacity>
           <View style={styles.maintenanceRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
               <Text style={styles.actionLabel}>Chế độ bảo trì hệ thống</Text>
@@ -350,58 +474,70 @@ export default function ProfileScreen() {
         animationType="slide"
         onRequestClose={() => setPasswordModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🔑 Đổi mật khẩu</Text>
-              <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                automaticallyAdjustKeyboardInsets={true}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>🔑 Đổi mật khẩu</Text>
+                  <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry
+                  value={oldPassword}
+                  onChangeText={setOldPassword}
+                />
+
+                <Text style={styles.inputLabel}>Mật khẩu mới (tối thiểu 6 ký tự)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+
+                <Text style={styles.inputLabel}>Xác nhận mật khẩu mới</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="••••••••"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+
+                <TouchableOpacity
+                  style={[styles.modalSubmitBtn, changingPass && styles.btnDisabled]}
+                  onPress={handleChangePassword}
+                  disabled={changingPass}
+                >
+                  {changingPass ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.modalSubmitText}>Lưu mật khẩu mới</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="••••••••"
-              placeholderTextColor="#94a3b8"
-              secureTextEntry
-              value={oldPassword}
-              onChangeText={setOldPassword}
-            />
-
-            <Text style={styles.inputLabel}>Mật khẩu mới (tối thiểu 6 ký tự)</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="••••••••"
-              placeholderTextColor="#94a3b8"
-              secureTextEntry
-              value={newPassword}
-              onChangeText={setNewPassword}
-            />
-
-            <Text style={styles.inputLabel}>Xác nhận mật khẩu mới</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="••••••••"
-              placeholderTextColor="#94a3b8"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-
-            <TouchableOpacity
-              style={[styles.modalSubmitBtn, changingPass && styles.btnDisabled]}
-              onPress={handleChangePassword}
-              disabled={changingPass}
-            >
-              {changingPass ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.modalSubmitText}>Lưu mật khẩu mới</Text>
-              )}
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal Change Email */}
@@ -411,81 +547,267 @@ export default function ProfileScreen() {
         animationType="slide"
         onRequestClose={() => setEmailModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                automaticallyAdjustKeyboardInsets={true}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>✉️ Đổi địa chỉ Email</Text>
+                  <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {emailStep === 1 ? (
+                  <>
+                    <Text style={styles.inputLabel}>Địa chỉ Email mới *</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="newemail@gmail.com"
+                      placeholderTextColor="#94a3b8"
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      value={newEmail}
+                      onChangeText={setNewEmail}
+                    />
+
+                    <TouchableOpacity
+                      style={[styles.modalSubmitBtn, changingEmail && styles.btnDisabled]}
+                      onPress={handleRequestEmailCode}
+                      disabled={changingEmail}
+                    >
+                      {changingEmail ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.modalSubmitText}>Gửi mã xác nhận về Email hiện tại</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.stepHint}>
+                      Mã 6 chữ số đã được gửi tới email hiện tại <Text style={{ color: '#818cf8' }}>{userInfo?.email}</Text>. Vui lòng kiểm tra hộp thư để xác nhận đổi sang <Text style={{ color: '#38bdf8' }}>{newEmail}</Text>.
+                    </Text>
+
+                    <Text style={styles.inputLabel}>Mã xác nhận (6 chữ số) *</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="123456"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      value={emailCode}
+                      onChangeText={setEmailCode}
+                    />
+
+                    <TouchableOpacity
+                      style={[styles.modalSubmitBtn, changingEmail && styles.btnDisabled]}
+                      onPress={handleConfirmChangeEmail}
+                      disabled={changingEmail}
+                    >
+                      {changingEmail ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.modalSubmitText}>Xác nhận đổi Email</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{ marginTop: 12, alignItems: 'center' }}
+                      onPress={() => setEmailStep(1)}
+                    >
+                      <Text style={{ color: '#38bdf8', fontSize: 13 }}>← Đổi lại Email khác</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal Quản lý phân quyền (Admin) */}
+      <Modal
+        visible={rolesModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRolesModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>✉️ Đổi địa chỉ Email</Text>
-              <TouchableOpacity onPress={() => setEmailModalVisible(false)}>
+              <Text style={styles.modalTitle}>🛡️ Phân quyền tài khoản</Text>
+              <TouchableOpacity onPress={() => setRolesModalVisible(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {emailStep === 1 ? (
-              <>
-                <Text style={styles.inputLabel}>Địa chỉ Email mới *</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="newemail@gmail.com"
-                  placeholderTextColor="#94a3b8"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={newEmail}
-                  onChangeText={setNewEmail}
-                />
+            {/* Tìm kiếm tài khoản */}
+            <View style={styles.roleSearchRow}>
+              <TextInput
+                style={styles.roleSearchInput}
+                placeholder="Tìm email..."
+                placeholderTextColor="#94a3b8"
+                value={roleSearch}
+                onChangeText={setRoleSearch}
+                onSubmitEditing={() => fetchRoleAccounts(roleSearch)}
+              />
+              <TouchableOpacity
+                style={styles.roleSearchBtn}
+                onPress={() => fetchRoleAccounts(roleSearch)}
+              >
+                <Text style={styles.roleSearchBtnText}>Tìm</Text>
+              </TouchableOpacity>
+            </View>
 
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, changingEmail && styles.btnDisabled]}
-                  onPress={handleRequestEmailCode}
-                  disabled={changingEmail}
-                >
-                  {changingEmail ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.modalSubmitText}>Gửi mã xác nhận tới Email mới</Text>
-                  )}
-                </TouchableOpacity>
-              </>
+            {roleLoading ? (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#4f46e5" />
+                <Text style={{ color: '#94a3b8', marginTop: 8 }}>Đang tải tài khoản...</Text>
+              </View>
             ) : (
-              <>
-                <Text style={styles.stepHint}>
-                  Mã 6 chữ số đã gửi tới <Text style={{ color: '#818cf8' }}>{newEmail}</Text>. Vui lòng kiểm tra hộp thư.
-                </Text>
+              <ScrollView style={{ maxHeight: 400 }}>
+                {roleAccounts.length === 0 ? (
+                  <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20 }}>
+                    Không tìm thấy tài khoản nào.
+                  </Text>
+                ) : (
+                  roleAccounts.map((acc) => {
+                    const isRootAdmin = acc.accountId === 1 || acc.email?.toLowerCase() === 'admin';
+                    const isSelf = userInfo?.email && acc.email?.toLowerCase() === userInfo.email.toLowerCase();
 
-                <Text style={styles.inputLabel}>Mã xác nhận (6 chữ số) *</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="123456"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={emailCode}
-                  onChangeText={setEmailCode}
-                />
+                    return (
+                      <View key={acc.accountId} style={styles.roleAccountCard}>
+                        <View style={styles.roleAccountHeader}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.roleAccountEmail}>{acc.email}</Text>
+                            <Text style={styles.roleAccountName}>
+                              👤 {acc.fullName || 'Chưa liên kết hồ sơ'}
+                            </Text>
+                          </View>
+                          <View>
+                            {acc.groupName === 'ADMIN_GROUP' && (
+                              <View style={[styles.groupBadge, styles.groupBadgeAdmin]}>
+                                <Text style={styles.groupBadgeAdminText}>👑 Admin</Text>
+                              </View>
+                            )}
+                            {acc.groupName === 'STAFF_GROUP' && (
+                              <View style={[styles.groupBadge, styles.groupBadgeStaff]}>
+                                <Text style={styles.groupBadgeStaffText}>🧑‍💼 Thủ thư</Text>
+                              </View>
+                            )}
+                            {acc.groupName === 'USER_GROUP' && (
+                              <View style={[styles.groupBadge, styles.groupBadgeUser]}>
+                                <Text style={styles.groupBadgeUserText}>📖 Độc giả</Text>
+                              </View>
+                            )}
+                            {acc.groupName !== 'ADMIN_GROUP' &&
+                              acc.groupName !== 'STAFF_GROUP' &&
+                              acc.groupName !== 'USER_GROUP' && (
+                                <View style={[styles.groupBadge, styles.groupBadgeOther]}>
+                                  <Text style={styles.groupBadgeOtherText}>{acc.groupName}</Text>
+                                </View>
+                              )}
+                          </View>
+                        </View>
 
-                <TouchableOpacity
-                  style={[styles.modalSubmitBtn, changingEmail && styles.btnDisabled]}
-                  onPress={handleConfirmChangeEmail}
-                  disabled={changingEmail}
-                >
-                  {changingEmail ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.modalSubmitText}>Xác nhận đổi Email</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={{ marginTop: 12, alignItems: 'center' }}
-                  onPress={() => setEmailStep(1)}
-                >
-                  <Text style={{ color: '#38bdf8', fontSize: 13 }}>← Đổi lại Email khác</Text>
-                </TouchableOpacity>
-              </>
+                        <View style={styles.roleAccountFooter}>
+                          {isRootAdmin ? (
+                            <Text style={styles.protectedText}>🔒 Quản trị tối cao</Text>
+                          ) : isSelf ? (
+                            <Text style={styles.protectedText}>🔒 Tài khoản của bạn</Text>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.changeRoleBtn}
+                              onPress={() => handleSelectAccountForRole(acc)}
+                            >
+                              <Text style={styles.changeRoleBtnText}>⚙️ Đổi vai trò</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
             )}
           </View>
         </View>
       </Modal>
+
+      {/* Modal Chọn nhóm quyền mới */}
+      <Modal
+        visible={editRoleModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditRoleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>⚙️ Đổi vai trò</Text>
+              <TouchableOpacity onPress={() => setEditRoleModalVisible(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedRoleAccount && (
+              <View style={styles.selectedAccountBox}>
+                <Text style={styles.selectedAccountEmail}>{selectedRoleAccount.email}</Text>
+                <Text style={styles.selectedAccountName}>
+                  Độc giả: {selectedRoleAccount.fullName}
+                </Text>
+              </View>
+            )}
+
+            <Text style={[styles.inputLabel, { marginTop: 6 }]}>Chọn vai trò mới:</Text>
+
+            {roleGroups.map((g) => {
+              const isSelected = selectedGroupId === g.id;
+              return (
+                <TouchableOpacity
+                  key={g.id}
+                  style={[styles.roleOptionCard, isSelected && styles.roleOptionCardSelected]}
+                  onPress={() => setSelectedGroupId(g.id)}
+                >
+                  <Text style={[styles.roleOptionTitle, isSelected && styles.roleOptionTitleSelected]}>
+                    {g.name === 'ADMIN_GROUP' && '👑 Quản trị viên (Admin)'}
+                    {g.name === 'STAFF_GROUP' && '🧑‍💼 Thủ thư (Staff)'}
+                    {g.name === 'USER_GROUP' && '📖 Độc giả (User)'}
+                    {g.name !== 'ADMIN_GROUP' &&
+                      g.name !== 'STAFF_GROUP' &&
+                      g.name !== 'USER_GROUP' &&
+                      g.name}
+                  </Text>
+                  <Text style={styles.roleOptionDesc}>{g.description || g.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity
+              style={[styles.modalSubmitBtn, roleSaving && styles.btnDisabled]}
+              onPress={handleSaveRoleChange}
+              disabled={roleSaving}
+            >
+              {roleSaving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.modalSubmitText}>Lưu thay đổi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
+  </KeyboardAvoidingView>
   );
 }
 
@@ -675,6 +997,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  keyboardAvoidingOverlay: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -740,5 +1065,161 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  // Role Management Styles
+  roleSearchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  roleSearchInput: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    color: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  roleSearchBtn: {
+    backgroundColor: '#4f46e5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleSearchBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  roleAccountCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  roleAccountHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  roleAccountEmail: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  roleAccountName: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  groupBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  groupBadgeAdmin: {
+    backgroundColor: 'rgba(124, 58, 237, 0.25)',
+  },
+  groupBadgeAdminText: {
+    color: '#c084fc',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  groupBadgeStaff: {
+    backgroundColor: 'rgba(217, 119, 6, 0.25)',
+  },
+  groupBadgeStaffText: {
+    color: '#fbbf24',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  groupBadgeUser: {
+    backgroundColor: 'rgba(5, 150, 105, 0.25)',
+  },
+  groupBadgeUserText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  groupBadgeOther: {
+    backgroundColor: '#334155',
+  },
+  groupBadgeOtherText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  roleAccountFooter: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    paddingTop: 8,
+  },
+  protectedText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
+  changeRoleBtn: {
+    backgroundColor: '#334155',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  changeRoleBtnText: {
+    color: '#f8fafc',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  selectedAccountBox: {
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  selectedAccountEmail: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  selectedAccountName: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  roleOptionCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  roleOptionCardSelected: {
+    borderColor: '#4f46e5',
+    backgroundColor: 'rgba(79, 70, 229, 0.15)',
+  },
+  roleOptionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  roleOptionTitleSelected: {
+    color: '#818cf8',
+  },
+  roleOptionDesc: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
   },
 });

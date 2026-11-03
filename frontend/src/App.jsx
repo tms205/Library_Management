@@ -18,6 +18,7 @@ import BorrowBook from './pages/BorrowBook';
 import ReturnBook from './pages/ReturnBook';
 import BorrowManagement from './pages/BorrowManagement';
 import SystemConfig from './pages/SystemConfig';
+import RoleManagement from './pages/RoleManagement';
 import ChangePassword from './pages/ChangePassword';
 import ChangeEmail from './pages/ChangeEmail';
 
@@ -85,8 +86,9 @@ function App() {
               <Route path="/borrow-management" element={<BorrowManagement />} />
             </Route>
 
-            {/* Cấu hình hệ thống (Admin): SYSTEM_MAINTENANCE */}
+            {/* Cấu hình hệ thống & Phân quyền (Admin): SYSTEM_MAINTENANCE */}
             <Route element={<PermissionRoute permissions={['SYSTEM_MAINTENANCE']} />}>
+              <Route path="/roles" element={<RoleManagement />} />
               <Route path="/system-config" element={<SystemConfig />} />
             </Route>
 

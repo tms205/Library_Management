@@ -30,6 +30,7 @@ function BorrowManagement() {
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState({
     memberName: '',
@@ -311,19 +312,30 @@ function BorrowManagement() {
                 </span>
               ) : (
                 <span className="bm-summary-text">
-                  Hiển thị <strong>{records.length}</strong> phiếu mượn
+                  Hiển thị <strong>{onlyOverdue ? records.filter((r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED').length : records.length}</strong> / {records.length} phiếu mượn
                 </span>
               )}
             </div>
 
-            <button
-              type="button"
-              className="bm-btn bm-btn-outline"
-              disabled={loading}
-              onClick={() => loadRecords(appliedFilters)}
-            >
-              <span>↻</span> Tải lại dữ liệu
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className={`bm-btn ${onlyOverdue ? 'bm-btn-reject' : 'bm-btn-outline'}`}
+                onClick={() => setOnlyOverdue(!onlyOverdue)}
+                style={{ fontSize: '15px', padding: '6px 12px' }}
+              >
+                {onlyOverdue ? '✕ Xem toàn bộ' : '⚠️ Chỉ xem sách quá hạn'}
+              </button>
+
+              <button
+                type="button"
+                className="bm-btn bm-btn-outline"
+                disabled={loading}
+                onClick={() => loadRecords(appliedFilters)}
+              >
+                <span>↻</span> Tải lại dữ liệu
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -333,11 +345,11 @@ function BorrowManagement() {
             </div>
           ) : records.length === 0 ? (
             <div className="bm-empty" style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>📋</div>
-              <strong style={{ display: 'block', fontSize: '16px', color: '#1e293b', marginBottom: '6px' }}>
+              <div style={{ fontSize: '42px', marginBottom: '12px' }}>📋</div>
+              <strong style={{ display: 'block', fontSize: '18px', color: '#1e293b', marginBottom: '6px' }}>
                 Hiện chưa có bản ghi mượn trả nào
               </strong>
-              <span style={{ fontSize: '14px', color: '#64748b' }}>
+              <span style={{ fontSize: '16px', color: '#64748b' }}>
                 Khi bạn đọc gửi yêu cầu mượn sách, các phiếu sẽ hiển thị tại đây để bạn phê duyệt.
               </span>
             </div>
@@ -352,6 +364,7 @@ function BorrowManagement() {
                     <th>Mã sách</th>
                     <th>Tên sách</th>
                     <th>Ngày mượn</th>
+                    <th>Hạn trả</th>
                     <th>Ngày trả</th>
                     <th>Trạng thái</th>
                     <th style={{ textAlign: 'center' }}>Thao tác xét duyệt</th>
@@ -359,17 +372,31 @@ function BorrowManagement() {
                 </thead>
 
                 <tbody>
-                  {records.map((item) => {
+                  {(onlyOverdue ? records.filter((r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED') : records).map((item) => {
                     const isBusy = actionLoadingId === item.id;
+                    const isCurrentlyOverdue = item.isOverdue && item.status !== 'RETURNED' && item.status !== 'REJECTED';
 
                     return (
-                      <tr key={item.id}>
+                      <tr key={item.id} style={isCurrentlyOverdue ? { backgroundColor: '#fff5f5' } : {}}>
                         <td className="bm-mono">#{item.id}</td>
                         <td className="bm-mono">#{item.memberId}</td>
                         <td className="bm-member-name">{item.memberName}</td>
                         <td className="bm-mono">#{item.bookId}</td>
                         <td className="bm-book-name">{item.bookTitle}</td>
                         <td>{item.borrowDate || '—'}</td>
+                        <td>
+                          <div style={{ fontWeight: item.dueDate ? 600 : 400 }}>{item.dueDate || '—'}</div>
+                          {isCurrentlyOverdue && (
+                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#b91c1c', fontWeight: 700, background: '#fee2e2', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
+                              ⚠️ Quá hạn ({item.overdueDays} ngày)
+                            </span>
+                          )}
+                          {item.status === 'RETURNED' && item.isOverdue && (
+                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#b45309', fontWeight: 600, background: '#fef3c7', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
+                              Trễ {item.overdueDays} ngày
+                            </span>
+                          )}
+                        </td>
                         <td>{item.returnDate || '—'}</td>
                         <td>
                           <StatusBadge status={item.status} />
@@ -413,7 +440,7 @@ function BorrowManagement() {
 
                           {/* Trạng thái không có thao tác hoặc thiếu quyền */}
                           {item.status !== 'PENDING' && item.status !== 'RETURN_PENDING' && (
-                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                            <span style={{ color: '#94a3b8', fontSize: '15px' }}>—</span>
                           )}
                         </td>
                       </tr>

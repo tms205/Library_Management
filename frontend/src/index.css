@@ -6,6 +6,42 @@ body,
   min-height: 100%;
 }
 
+html {
+  /* Tăng cỡ chữ cơ sở lên 2 đơn vị (từ 14px lên 16px) */
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ========================================================
+   GLOBAL FORM VALIDATION STYLES
+   ======================================================== */
+.field-error {
+  display: block;
+  font-size: 13px;
+  color: #ef4444;
+  margin-top: 5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+input.input-error,
+select.input-error,
+textarea.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+input.input-error:focus,
+select.input-error:focus,
+textarea.input-error:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
 }

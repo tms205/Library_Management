@@ -37,3 +37,9 @@ databaseChangeLog:
 
   - include:
      file: db/changelog/013-add-image-to-books.sql
+
+  - include:
+     file: db/changelog/014-add-due-date-to-borrow-records.sql
+
+  - include:
+     file: db/changelog/015-add-otp-code-to-email-verification-tokens.sql

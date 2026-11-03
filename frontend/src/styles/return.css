@@ -57,7 +57,7 @@
 
   color: var(--return-primary);
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 1.2px;
   text-transform: uppercase;
@@ -66,7 +66,7 @@
 .return-page-header h1 {
   margin: 0;
 
-  font-size: 37px;
+  font-size: 39px;
   font-weight: 800;
 }
 
@@ -75,7 +75,7 @@
 
   color: var(--return-text-muted);
 
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .return-btn {
@@ -91,7 +91,7 @@
   border-radius: 10px;
 
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 
   text-decoration: none;
@@ -135,7 +135,7 @@
   border: 1px solid var(--return-border);
   border-radius: 10px;
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -171,7 +171,7 @@
 
   color: currentColor;
 
-  font-size: 20px;
+  font-size: 22px;
 
   background: transparent;
 
@@ -207,7 +207,7 @@
 .return-card-header h2 {
   margin: 0;
 
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -216,7 +216,7 @@
 
   color: var(--return-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .return-card-badge,
@@ -228,7 +228,7 @@
 
   color: var(--return-primary-dark);
 
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
 
   background: var(--return-primary-soft);
@@ -252,7 +252,7 @@
 
   color: var(--return-text-secondary);
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -267,7 +267,7 @@
   outline: none;
 
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .return-field input:focus {
@@ -302,7 +302,7 @@
 
   border-collapse: collapse;
 
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .return-table th {
@@ -314,7 +314,7 @@
 
   color: #475569;
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   text-transform: uppercase;
 
@@ -365,7 +365,7 @@
     "Courier New",
     monospace;
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -379,7 +379,7 @@
 
   color: #b45309;
 
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 
   background: #fffbeb;
@@ -394,7 +394,7 @@
 
   color: var(--return-text-muted);
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -411,7 +411,7 @@
 
   color: var(--return-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
 
   background: #fcfcfe;
 }

@@ -68,6 +68,12 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
       title: 'HỆ THỐNG',
       items: [
         {
+          label: 'Phân quyền tài khoản',
+          to: '/roles',
+          icon: '🛡️',
+          permission: 'SYSTEM_MAINTENANCE',
+        },
+        {
           label: 'Cấu hình hệ thống',
           to: '/system-config',
           icon: '⚙',

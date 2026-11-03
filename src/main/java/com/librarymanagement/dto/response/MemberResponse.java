@@ -27,6 +27,8 @@ public class MemberResponse {
 	@JsonProperty("is_delete")
 	private Integer is_delete;
 
+	private String role;
+
 	// Constructor tương thích ngược với code và unit test cũ (7 tham số)
 	public MemberResponse(
 			Long id,
@@ -36,7 +38,7 @@ public class MemberResponse {
 			String address,
 			Long accountId,
 			String email) {
-		this(id, fullName, dateOfBirth, phone, address, accountId, email, true, 0);
+		this(id, fullName, dateOfBirth, phone, address, accountId, email, true, 0, "USER");
 	}
 
 	// Constructor tương thích ngược (8 tham số)
@@ -49,7 +51,21 @@ public class MemberResponse {
 			Long accountId,
 			String email,
 			Boolean enabled) {
-		this(id, fullName, dateOfBirth, phone, address, accountId, email, enabled, 0);
+		this(id, fullName, dateOfBirth, phone, address, accountId, email, enabled, 0, "USER");
+	}
+
+	// Constructor tương thích ngược (9 tham số)
+	public MemberResponse(
+			Long id,
+			String fullName,
+			LocalDate dateOfBirth,
+			String phone,
+			String address,
+			Long accountId,
+			String email,
+			Boolean enabled,
+			Integer is_delete) {
+		this(id, fullName, dateOfBirth, phone, address, accountId, email, enabled, is_delete, "USER");
 	}
 
 	@JsonProperty("isDelete")

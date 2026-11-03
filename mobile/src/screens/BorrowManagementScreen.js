@@ -11,6 +11,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   getBorrowManagementApi,
@@ -230,23 +232,33 @@ export default function BorrowManagementScreen() {
       bg: 'rgba(148, 163, 184, 0.15)',
     };
     const isBusy = actionId === item.id;
+    const isCurrentlyOverdue = item.isOverdue && item.status !== 'RETURNED' && item.status !== 'REJECTED';
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, isCurrentlyOverdue && { borderColor: '#ef4444', borderWidth: 1.5 }]}>
         <View style={styles.cardHeader}>
           <Text style={styles.bookTitle} numberOfLines={2}>
             {item.bookTitle}
           </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>
-              {statusInfo.label}
+          <View style={[styles.statusBadge, { backgroundColor: isCurrentlyOverdue ? 'rgba(239, 68, 68, 0.2)' : statusInfo.bg }]}>
+            <Text style={[styles.statusText, { color: isCurrentlyOverdue ? '#f87171' : statusInfo.color }]}>
+              {isCurrentlyOverdue ? '⚠️ QUÁ HẠN' : statusInfo.label}
             </Text>
           </View>
         </View>
 
         <Text style={styles.infoText}>👤 Độc giả: <Text style={styles.infoVal}>{item.memberName || 'Chưa cập nhật'}</Text></Text>
         <Text style={styles.infoText}>📅 Ngày mượn: <Text style={styles.infoVal}>{item.borrowDate || 'N/A'}</Text></Text>
-        <Text style={styles.infoText}>⏳ Hạn trả: <Text style={styles.infoVal}>{item.returnDate || 'N/A'}</Text></Text>
+        <Text style={styles.infoText}>
+          ⏳ Hạn trả:{' '}
+          <Text style={[styles.infoVal, isCurrentlyOverdue && { color: '#f87171', fontWeight: '700' }]}>
+            {item.dueDate || 'N/A'}
+          </Text>
+          {isCurrentlyOverdue && (
+            <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 12 }}> (Trễ {item.overdueDays} ngày)</Text>
+          )}
+        </Text>
+        <Text style={styles.infoText}>📥 Ngày trả: <Text style={styles.infoVal}>{item.returnDate || 'Chưa trả'}</Text></Text>
 
         {/* Action Buttons for Staff/Admin */}
         {item.status === 'PENDING' && (
@@ -382,84 +394,94 @@ export default function BorrowManagementScreen() {
         transparent
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🔍 Bộ lọc mượn trả</Text>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>🔍 Bộ lọc mượn trả</Text>
+                <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                  <Text style={styles.closeBtn}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 60 }}
+                automaticallyAdjustKeyboardInsets={true}
+              >
+                <Text style={styles.fieldLabel}>Tên độc giả</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Nhập tên độc giả..."
+                  placeholderTextColor="#64748b"
+                  value={filterMemberName}
+                  onChangeText={setFilterMemberName}
+                />
+
+                <Text style={styles.fieldLabel}>Tên sách</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Nhập tên sách..."
+                  placeholderTextColor="#64748b"
+                  value={filterBookTitle}
+                  onChangeText={setFilterBookTitle}
+                />
+
+                <Text style={styles.fieldLabel}>Ngày cụ thể (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Ví dụ: 2026-10-28"
+                  placeholderTextColor="#64748b"
+                  value={filterDate}
+                  onChangeText={setFilterDate}
+                />
+
+                <View style={styles.dateRow}>
+                  <View style={styles.dateCol}>
+                    <Text style={styles.fieldLabel}>Từ ngày</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#64748b"
+                      value={filterFromDate}
+                      onChangeText={setFilterFromDate}
+                    />
+                  </View>
+                  <View style={styles.dateCol}>
+                    <Text style={styles.fieldLabel}>Đến ngày</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#64748b"
+                      value={filterToDate}
+                      onChangeText={setFilterToDate}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.modalActionRow}>
+                  <TouchableOpacity
+                    style={styles.modalResetBtn}
+                    onPress={handleResetFilter}
+                  >
+                    <Text style={styles.modalResetBtnText}>↺ Đặt lại</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.modalApplyBtn}
+                    onPress={handleApplyFilter}
+                  >
+                    <Text style={styles.modalApplyBtnText}>Áp dụng</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.fieldLabel}>Tên độc giả</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Nhập tên độc giả..."
-                placeholderTextColor="#64748b"
-                value={filterMemberName}
-                onChangeText={setFilterMemberName}
-              />
-
-              <Text style={styles.fieldLabel}>Tên sách</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Nhập tên sách..."
-                placeholderTextColor="#64748b"
-                value={filterBookTitle}
-                onChangeText={setFilterBookTitle}
-              />
-
-              <Text style={styles.fieldLabel}>Ngày cụ thể (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Ví dụ: 2026-10-28"
-                placeholderTextColor="#64748b"
-                value={filterDate}
-                onChangeText={setFilterDate}
-              />
-
-              <View style={styles.dateRow}>
-                <View style={styles.dateCol}>
-                  <Text style={styles.fieldLabel}>Từ ngày</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#64748b"
-                    value={filterFromDate}
-                    onChangeText={setFilterFromDate}
-                  />
-                </View>
-                <View style={styles.dateCol}>
-                  <Text style={styles.fieldLabel}>Đến ngày</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#64748b"
-                    value={filterToDate}
-                    onChangeText={setFilterToDate}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.modalActionRow}>
-                <TouchableOpacity
-                  style={styles.modalResetBtn}
-                  onPress={handleResetFilter}
-                >
-                  <Text style={styles.modalResetBtnText}>↺ Đặt lại</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalApplyBtn}
-                  onPress={handleApplyFilter}
-                >
-                  <Text style={styles.modalApplyBtnText}>Áp dụng</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -664,6 +686,9 @@ const styles = StyleSheet.create({
   },
 
   // Modal Styles
+  keyboardAvoidingOverlay: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',

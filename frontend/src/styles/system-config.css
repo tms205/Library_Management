@@ -54,7 +54,7 @@
 
   color: var(--sys-primary);
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 1.2px;
   text-transform: uppercase;
@@ -63,7 +63,7 @@
 .sys-page-header h1 {
   margin: 0;
 
-  font-size: 37px;
+  font-size: 39px;
   font-weight: 800;
 }
 
@@ -72,7 +72,7 @@
 
   color: var(--sys-text-muted);
 
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .sys-btn {
@@ -88,7 +88,7 @@
   border-radius: 10px;
 
   font: inherit;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 
   text-decoration: none;
@@ -137,7 +137,7 @@
   border: 1px solid var(--sys-border);
   border-radius: 10px;
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -173,7 +173,7 @@
 
   color: currentColor;
 
-  font-size: 20px;
+  font-size: 22px;
 
   background: transparent;
 
@@ -206,7 +206,7 @@
 .sys-card-header h2 {
   margin: 0;
 
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 800;
 }
 
@@ -217,7 +217,7 @@
 
   color: var(--sys-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -230,7 +230,7 @@
 
   border-radius: 999px;
 
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
 
   white-space: nowrap;
@@ -297,7 +297,7 @@
 
   border-radius: 13px;
 
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 900;
 }
 
@@ -316,7 +316,7 @@
 .sys-setting-info h3 {
   margin: 0 0 5px;
 
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
 }
 
@@ -327,7 +327,7 @@
 
   color: var(--sys-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
 }
 
@@ -423,7 +423,7 @@
   align-items: center;
   gap: 8px;
 
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .sys-state-dot {
@@ -440,7 +440,7 @@
 
   color: inherit;
 
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
 
   opacity: 0.88;
@@ -458,7 +458,7 @@
 
   color: #475569;
 
-  font-size: 14px;
+  font-size: 16px;
 
   background: var(--sys-primary-soft);
 }
@@ -484,7 +484,7 @@
 .sys-change-state {
   color: var(--sys-text-muted);
 
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -510,7 +510,7 @@
 
   color: var(--sys-text-muted);
 
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
 
   background: white;
@@ -548,7 +548,7 @@
   }
 
   .sys-page-header h1 {
-    font-size: 31px;
+    font-size: 33px;
   }
 
   .sys-switch {

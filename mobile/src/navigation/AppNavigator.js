@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import VerifyEmailScreen from '../screens/VerifyEmailScreen';
 import BooksScreen from '../screens/BooksScreen';
 import MyBooksScreen from '../screens/MyBooksScreen';
 import BorrowManagementScreen from '../screens/BorrowManagementScreen';
@@ -161,6 +162,16 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: 'Khôi phục mật khẩu',
+                headerStyle: { backgroundColor: '#1e293b' },
+                headerTintColor: '#f8fafc',
+              }}
+            />
+            <Stack.Screen
+              name="VerifyEmail"
+              component={VerifyEmailScreen}
+              options={{
+                headerShown: true,
+                title: 'Kích hoạt tài khoản',
                 headerStyle: { backgroundColor: '#1e293b' },
                 headerTintColor: '#f8fafc',
               }}

@@ -13,17 +13,34 @@ function Login() {
 
   const [email, setEmail] = useState(registeredEmail);
   const [password, setPassword] = useState('');
-
+  const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const validateForm = () => {
+    const err = {};
+    const emailOrAdminRegex = /^(admin|[^\s@]+@[^\s@]+\.[^\s@]+)$/;
+
+    if (!email.trim()) {
+      err.email = 'Vui lòng nhập email hoặc tài khoản admin!';
+    } else if (!emailOrAdminRegex.test(email.trim())) {
+      err.email = 'Email không đúng định dạng (Ví dụ: user@example.com)!';
+    }
+
+    if (!password) {
+      err.password = 'Vui lòng nhập mật khẩu!';
+    }
+
+    setErrors(err);
+    return Object.keys(err).length === 0;
+  };
 
   const handleLogin = async (event) => {
     event.preventDefault();
 
     setMessage('');
 
-    if (!email || !password) {
-      setMessage('Vui lòng nhập đầy đủ email và mật khẩu!');
+    if (!validateForm()) {
       return;
     }
 
@@ -31,7 +48,7 @@ function Login() {
       setLoading(true);
 
       const response = await login({
-        email: email,
+        email: email.trim(),
         password: password,
       });
 
@@ -74,14 +91,19 @@ function Login() {
 
         <form onSubmit={handleLogin}>
           <div className="form-group">
-            <label>Email</label>
+            <label>Email / Tài khoản</label>
 
             <input
               type="text"
-              placeholder="Nhập email"
+              className={errors.email ? 'input-error' : ''}
+              placeholder="Nhập email hoặc admin"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+              }}
             />
+            {errors.email && <span className="field-error">{errors.email}</span>}
           </div>
 
           <div className="form-group">
@@ -89,10 +111,15 @@ function Login() {
 
             <input
               type="password"
+              className={errors.password ? 'input-error' : ''}
               placeholder="Nhập mật khẩu"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+              }}
             />
+            {errors.password && <span className="field-error">{errors.password}</span>}
           </div>
 
           <p className="auth-link" style={{ textAlign: 'right' }}>

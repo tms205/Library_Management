@@ -104,4 +104,29 @@ class AuthControllerTest {
 
 		assertEquals("Email hoặc mật khẩu không đúng!", response.getBody().get("message"));
 	}
+
+	@Test
+	void logout_ShouldBlacklistTokenAndRevokeRefreshToken() {
+		org.springframework.security.core.Authentication authentication =
+				org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+		when(authentication.getName()).thenReturn("test@gmail.com");
+
+		Map<String, String> body = Map.of("refreshToken", "sample-refresh-token");
+		ResponseEntity<String> response = authController.logout("Bearer test-access-token", body, authentication);
+
+		assertEquals(200, response.getStatusCode().value());
+		assertEquals("Đăng xuất thành công!", response.getBody());
+
+		org.mockito.Mockito.verify(tokenBlacklistService).blacklist("test-access-token");
+		org.mockito.Mockito.verify(authService).logout("test@gmail.com");
+		org.mockito.Mockito.verify(authService).logoutByRefreshToken("sample-refresh-token");
+	}
+
+	@Test
+	void logout_WithoutBearer_ShouldNotCrash() {
+		ResponseEntity<String> response = authController.logout(null, null, null);
+
+		assertEquals(200, response.getStatusCode().value());
+		assertEquals("Đăng xuất thành công!", response.getBody());
+	}
 }

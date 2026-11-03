@@ -131,4 +131,9 @@ public class JwtService {
 
 		return expirationDate.after(new Date());
 	}
+
+	// Lay thoi diem het han cua token
+	public Date extractExpiration(String token) {
+		return extractAllClaims(token).getExpiration();
+	}
 }

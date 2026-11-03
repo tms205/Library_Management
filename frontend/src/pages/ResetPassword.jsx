@@ -14,26 +14,46 @@ function ResetPassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const validateForm = () => {
+    const err = {};
+
+    if (!otp.trim()) {
+      err.otp = 'Mã OTP không được để trống!';
+    } else if (!/^\d{6}$/.test(otp.trim())) {
+      err.otp = 'Mã OTP phải gồm đúng 6 chữ số!';
+    }
+
+    if (!newPassword) {
+      err.newPassword = 'Mật khẩu mới không được để trống!';
+    } else if (newPassword.length < 6) {
+      err.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự!';
+    }
+
+    if (!confirmPassword) {
+      err.confirmPassword = 'Vui lòng xác nhận lại mật khẩu!';
+    } else if (newPassword !== confirmPassword) {
+      err.confirmPassword = 'Mật khẩu xác nhận không khớp!';
+    }
+
+    setErrors(err);
+    return Object.keys(err).length === 0;
+  };
 
   const handleResetPassword = async (event) => {
     event.preventDefault();
 
     setMessage('');
 
-    if (!email || !otp || !newPassword || !confirmPassword) {
-      setMessage('Vui lòng nhập đầy đủ thông tin!');
+    if (!email) {
+      setMessage('Không tìm thấy thông tin email. Vui lòng quay lại bước Quên mật khẩu!');
       return;
     }
 
-    if (otp.length !== 6) {
-      setMessage('OTP phải gồm đúng 6 chữ số!');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setMessage('Mật khẩu xác nhận không khớp!');
+    if (!validateForm()) {
       return;
     }
 
@@ -42,11 +62,11 @@ function ResetPassword() {
 
       await resetPassword({
         email: email,
-        otp: otp,
+        otp: otp.trim(),
         newPassword: newPassword,
       });
 
-      setMessage('Đặt lại mật khẩu thành công!');
+      setMessage('Đặt lại mật khẩu thành công! Đang chuyển hướng...');
 
       setTimeout(() => {
         navigate('/login');
@@ -85,40 +105,53 @@ function ResetPassword() {
           </div>
 
           <div className="form-group">
-            <label>Mã OTP</label>
+            <label>Mã OTP *</label>
 
             <input
               type="text"
+              className={errors.otp ? 'input-error' : ''}
               placeholder="Nhập mã OTP 6 số"
               value={otp}
               maxLength={6}
               onChange={(event) => {
                 const value = event.target.value.replace(/\D/g, '');
                 setOtp(value);
+                if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }));
               }}
             />
+            {errors.otp && <span className="field-error">{errors.otp}</span>}
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu mới</label>
+            <label>Mật khẩu mới *</label>
 
             <input
               type="password"
-              placeholder="Nhập mật khẩu mới"
+              className={errors.newPassword ? 'input-error' : ''}
+              placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
               value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
+              onChange={(event) => {
+                setNewPassword(event.target.value);
+                if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: '' }));
+              }}
             />
+            {errors.newPassword && <span className="field-error">{errors.newPassword}</span>}
           </div>
 
           <div className="form-group">
-            <label>Xác nhận mật khẩu</label>
+            <label>Xác nhận mật khẩu mới *</label>
 
             <input
               type="password"
+              className={errors.confirmPassword ? 'input-error' : ''}
               placeholder="Nhập lại mật khẩu mới"
               value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              onChange={(event) => {
+                setConfirmPassword(event.target.value);
+                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' }));
+              }}
             />
+            {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
           </div>
 
           {message && <p className="auth-message">{message}</p>}

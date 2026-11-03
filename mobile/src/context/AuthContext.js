@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await logoutApi();
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      await logoutApi(refreshToken);
     } catch {}
     await AsyncStorage.removeItem('accessToken');
     await AsyncStorage.removeItem('refreshToken');
