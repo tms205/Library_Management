@@ -4,9 +4,14 @@ import java.time.LocalDate;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.BorrowRecord;
 import com.librarymanagement.entity.Member;
 import com.librarymanagement.entity.Role;
+
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 
 public class MemberSpecification {
 
@@ -87,10 +92,22 @@ public class MemberSpecification {
 		};
 	}
 
+	// Tái sử dụng Join account nếu đã có trên Root, tránh duplicate LEFT JOIN trong SQL sinh ra
+	private static Join<Member, Account> getAccountJoin(Root<Member> root) {
+		for (Join<Member, ?> join : root.getJoins()) {
+			if ("account".equals(join.getAttribute().getName())) {
+				@SuppressWarnings("unchecked")
+				Join<Member, Account> accountJoin = (Join<Member, Account>) join;
+				return accountJoin;
+			}
+		}
+		return root.join("account", JoinType.LEFT);
+	}
+
 	// Lọc bỏ các độc giả đã bị xóa mềm (is_delete = 1)
 	public static Specification<Member> isNotDeleted() {
 		return (root, query, cb) -> {
-			var accountJoin = root.join("account", jakarta.persistence.criteria.JoinType.LEFT);
+			var accountJoin = getAccountJoin(root);
 			return cb.or(
 					cb.isNull(accountJoin.get("isDelete")),
 					cb.equal(accountJoin.get("isDelete"), false)
@@ -101,7 +118,7 @@ public class MemberSpecification {
 	// Lọc bỏ tài khoản Admin - không hiển thị ở danh sách thành viên/độc giả
 	public static Specification<Member> isNotAdmin() {
 		return (root, query, cb) -> {
-			var accountJoin = root.join("account", jakarta.persistence.criteria.JoinType.LEFT);
+			var accountJoin = getAccountJoin(root);
 			return cb.and(
 					cb.or(
 							cb.isNull(accountJoin.get("role")),

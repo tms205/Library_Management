@@ -17,9 +17,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.librarymanagement.dto.request.CreateMemberRequest;
-import com.librarymanagement.dto.response.MemberResponse;
 import com.librarymanagement.dto.request.UpdateMemberRequest;
-import com.librarymanagement.entity.Member;
+import com.librarymanagement.dto.response.MemberResponse;
 import com.librarymanagement.service.MemberService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -39,47 +38,36 @@ public class MemberController {
 	// lay tat ca member
 	@GetMapping
 	public List<MemberResponse> getAllMembers() {
-
-		return memberService.getAllMembers()//
-				.stream()///
-				.map(this::toResponse)//
-				.toList();//
+		return memberService.getAllMembers();
 	}
 
 	// lay member theo id
 	@GetMapping("/{id}")
 	public MemberResponse getMemberById(@PathVariable Long id) {
-
-		Member member = memberService.getMemberById(id);
-
-		return toResponse(member);
+		return memberService.getMemberById(id);
 	}
 
 	// tao member
 	@PostMapping
-	public ResponseEntity<MemberResponse> createMember(//
-			@Valid //
-			@RequestBody CreateMemberRequest request) {//
-///
-		Member member = //
-				memberService.createMember(request);//
+	public ResponseEntity<MemberResponse> createMember(
+			@Valid
+			@RequestBody CreateMemberRequest request) {
 
-		return ResponseEntity//
-				.status(HttpStatus.CREATED)//
-				.body(toResponse(member));//
+		MemberResponse response = memberService.createMember(request);
+
+		return ResponseEntity
+				.status(HttpStatus.CREATED)
+				.body(response);
 	}
 
 	// update member
 	@PutMapping("/{id}")
-	public MemberResponse updateMember(//
-			@PathVariable Long id, //
-			@Valid //
-			@RequestBody UpdateMemberRequest request) {//
+	public MemberResponse updateMember(
+			@PathVariable Long id, 
+			@Valid 
+			@RequestBody UpdateMemberRequest request) {
 
-		Member member = //
-				memberService.updateMember(id, request);//
-
-		return toResponse(member);
+		return memberService.updateMember(id, request);
 	}
 
 	// xoa member
@@ -88,8 +76,8 @@ public class MemberController {
 
 		memberService.deleteMember(id);
 
-		return ResponseEntity.noContent()//
-				.build();//
+		return ResponseEntity.noContent()
+				.build();
 	}
 
 	// =========================================================================
@@ -100,73 +88,33 @@ public class MemberController {
 			@PathVariable Long id,
 			@RequestParam(required = false) Boolean enabled) {
 
-		Member member = memberService.updateMemberStatus(id, enabled);
-
-		return ResponseEntity.ok(toResponse(member));
+		return ResponseEntity.ok(memberService.updateMemberStatus(id, enabled));
 	}
 
 	// search + paging + sorting
 	@GetMapping("/search")
-	public Page<MemberResponse> searchMember(@RequestParam(required = false) String fullName,
-
+	public Page<MemberResponse> searchMember(
+			@RequestParam(required = false) String fullName,
 			@RequestParam(required = false) String phone,
-
 			@RequestParam(required = false) String address,
-
 			@RequestParam(defaultValue = "0") int page,
-
 			@RequestParam(defaultValue = "10") int size,
-
 			@RequestParam(defaultValue = "id") String sortBy,
-
-			@RequestParam(defaultValue = "asc") String direction, //
-
-			@RequestParam(required = false) LocalDate fromDate, //
-
-			@RequestParam(required = false) LocalDate toDate, //
-
+			@RequestParam(defaultValue = "asc") String direction,
+			@RequestParam(required = false) LocalDate fromDate,
+			@RequestParam(required = false) LocalDate toDate,
 			@RequestParam(required = false) Long bookId) {
 
-		return memberService///
-				.searchMember(//
-						fullName, //
-						phone, //
-						address, //
-						page, //
-						size, //
-						sortBy, //
-						direction, //
-						fromDate, //
-						toDate, //
-						bookId)//
-				.map(this::toResponse);
-	}
-
-	// chuyen Member thanh MemberResponse
-	private MemberResponse toResponse(Member member) {
-		Boolean enabled = (member.getAccount() != null && member.getAccount().getEnabled() != null)
-				? member.getAccount().getEnabled()
-				: true;
-
-		Integer isDelete = (member.getAccount() != null && Boolean.TRUE.equals(member.getAccount().getIsDelete()))
-				? 1
-				: 0;
-
-		String role = (member.getAccount() != null && member.getAccount().getRole() != null)
-				? member.getAccount().getRole().name()
-				: "USER";
-
-		return new MemberResponse(//
-				member.getId(), //
-				member.getFullName(), //
-				member.getDateOfBirth(), //
-				member.getPhone(), //
-				member.getAddress(), //
-				member.getAccount() != null ? member.getAccount().getId() : null, //
-				member.getAccount() != null ? member.getAccount().getEmail() : null, //
-				enabled, //
-				isDelete, //
-				role //
-		);
+		return memberService.searchMember(
+				fullName,
+				phone,
+				address,
+				page,
+				size,
+				sortBy,
+				direction,
+				fromDate,
+				toDate,
+				bookId);
 	}
 }

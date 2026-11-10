@@ -1,11 +1,11 @@
 package com.librarymanagement.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,55 +40,35 @@ public class BookController {
 	}
 
 	// API tìm kiếm sách đa tiêu chí: tiêu đề, ISBN, tác giả, trạng thái kho, khoảng ngày xuất bản
-	// Phục vụ cả giao diện Web React và ứng dụng Di động Flutter/React Native
 	@GetMapping("/search")
-	public ResponseEntity<Page<BookResponse>> searchBooks(//
-			@RequestParam(required = false) String title, //
-			@RequestParam(required = false) String isbn, //
-			@RequestParam(required = false) String author, //
-			@RequestParam(required = false) Boolean inStock, //
-			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate, //
-			@RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate, //
-			@RequestParam(defaultValue = "0") int page, //
-			@RequestParam(defaultValue = "10") int size, //
-			@RequestParam(defaultValue = "title") String sortBy, //
-			@RequestParam(defaultValue = "asc") String direction, //
-			@RequestParam(defaultValue = "publishedDate") String sortBy2, //
-			@RequestParam(defaultValue = "desc") String direction2//
-	) {
+	public ResponseEntity<Page<BookResponse>> searchBooks(
+			@RequestParam(required = false) String title,
+			@RequestParam(required = false) String isbn,
+			@RequestParam(required = false) String author,
+			@RequestParam(required = false) Boolean inStock,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size,
+			@RequestParam(defaultValue = "title") String sortBy,
+			@RequestParam(defaultValue = "asc") String direction,
+			@RequestParam(defaultValue = "publishedDate") String sortBy2,
+			@RequestParam(defaultValue = "desc") String direction2) {
 
-		Page<Book> books;
-		// Nếu không truyền các bộ lọc nâng cao (author, inStock, dates), gọi hàm 8 tham số cũ
-		// để giữ tương thích tuyệt đối với các Unit Test Mockito đã viết trước đó
-		if (author == null && inStock == null && fromDate == null && toDate == null) {
-			books = bookService.search(//
-					title, //
-					isbn, //
-					page, //
-					Math.min(size, 10), //
-					sortBy, //
-					direction, //
-					sortBy2, //
-					direction2//
-			);
-		} else {
-			books = bookService.search(//
-					title, //
-					isbn, //
-					author, //
-					inStock, //
-					fromDate, //
-					toDate, //
-					page, //
-					Math.min(size, 10), //
-					sortBy, //
-					direction, //
-					sortBy2, //
-					direction2//
-			);
-		}
-
-		Page<BookResponse> response = books.map(this::toResponse);
+		Page<BookResponse> response = bookService.search(
+				title,
+				isbn,
+				author,
+				inStock,
+				fromDate,
+				toDate,
+				page,
+				Math.min(size, 10),
+				sortBy,
+				direction,
+				sortBy2,
+				direction2
+		);
 
 		return ResponseEntity.ok(response);
 	}
@@ -103,85 +83,68 @@ public class BookController {
 			String direction,
 			String sortBy2,
 			String direction2) {
-		return searchBooks(title, isbn, null, null, null, null, page, size, sortBy, direction, sortBy2, direction2);
+		Page<BookResponse> response = bookService.search(
+				title,
+				isbn,
+				page,
+				Math.min(size, 10),
+				sortBy,
+				direction,
+				sortBy2,
+				direction2
+		);
+		return ResponseEntity.ok(response);
 	}
 
 	@GetMapping("/search-spec")
-	public ResponseEntity<List<Book>> searchWithSpecification(@RequestParam(required = false) String title, //
-			@RequestParam(required = false) String isbn//
-	) {
-
+	public ResponseEntity<List<Book>> searchWithSpecification(
+			@RequestParam(required = false) String title,
+			@RequestParam(required = false) String isbn) {
 		return ResponseEntity.ok(bookService.searchWithSpecification(title, isbn));
-
 	}
 
 	@GetMapping("/search-native")
-	public ResponseEntity<List<Book>> searchNativeBooks(@RequestParam(required = false) String title,
+	public ResponseEntity<List<Book>> searchNativeBooks(
+			@RequestParam(required = false) String title,
 			@RequestParam(required = false) String isbn) {
-
 		return ResponseEntity.ok(bookService.searchNativeBooks(title, isbn));
 	}
 
 	@PostMapping
-	public ResponseEntity<Book> createBook(@Valid @RequestBody CreateBookRequest request) {
+	public ResponseEntity<BookResponse> createBook(@Valid @RequestBody CreateBookRequest request) {
 		Book book = bookService.createBook(request);
-
-		return ResponseEntity.status(HttpStatus.CREATED).body(book);
+		return ResponseEntity.status(HttpStatus.CREATED).body(bookService.toResponse(book));
 	}
 
 	@PutMapping("/{id}")
-	public ResponseEntity<Book> updateBook(@PathVariable Long id, @Valid @RequestBody UpdateBookRequest request) {
-
-		return ResponseEntity.ok(bookService.updateBook(id, request));
+	public ResponseEntity<BookResponse> updateBook(@PathVariable Long id, @Valid @RequestBody UpdateBookRequest request) {
+		Book book = bookService.updateBook(id, request);
+		return ResponseEntity.ok(bookService.toResponse(book));
 	}
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
 		bookService.deleteBook(id);
-
 		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Book> getBookById(@PathVariable Long id) {
-		return ResponseEntity.ok(bookService.getBookById(id));
+	public ResponseEntity<BookResponse> getBookById(@PathVariable Long id) {
+		return ResponseEntity.ok(bookService.getBookResponseById(id));
 	}
 
 	@GetMapping
 	public ResponseEntity<List<BookResponse>> getAllBooks() {
-
-		List<BookResponse> response = bookService.getAllBooks()//
-				.stream()//
-				.map(this::toResponse)//
-				.toList();
-
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(bookService.getAllBooks());
 	}
 
-	private BookResponse toResponse(Book book) {
-
-		Set<String> authorNames = book.getAuthors()//
-				.stream()//
-				.map(author -> author.getName())//
-				.collect(Collectors.toSet());//
-
-		return new BookResponse(//
-				book.getId(), //
-				book.getTitle(), //
-				book.getIsbn(), //
-				book.getQuantity(), //
-				book.getPublishedDate(), //
-				book.getImage(), //
-				authorNames//
-		);
+	public BookResponse toResponse(Book book) {
+		return bookService.toResponse(book);
 	}
 
 	@PostMapping("/import")
-	public ResponseEntity<Map<String, Object>> importBooks(@RequestParam("file") MultipartFile file) {//
+	public ResponseEntity<Map<String, Object>> importBooks(@RequestParam("file") MultipartFile file) {
 		int total = bookService.importBooks(file);
-
 		return ResponseEntity.ok(Map.of("message", "Import sách thành công!", "total", total));
-
 	}
-
 }

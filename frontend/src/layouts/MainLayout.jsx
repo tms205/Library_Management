@@ -1,33 +1,27 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import Topbar from '../components/Topbar';
+import { useMemo } from 'react';
+import { getUserInfo } from '../utils/auth';
+import UserLayout from './UserLayout';
+import StaffLayout from './StaffLayout';
+import AdminLayout from './AdminLayout';
 import '../styles/layout.css';
 
+/**
+ * Intelligent Master Layout Dispatcher:
+ * Automatically routes the logged-in user into their bespoke layout:
+ * - USER: Elegant Modern Editorial Library (Top-Nav, full-width, book-centric)
+ * - STAFF: Professional Operations Workspace (Circulation queue, quick actions)
+ * - ADMIN: Premium Enterprise Console (System administration, security, audit)
+ */
 export default function MainLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const user = getUserInfo();
 
-  return (
-    <div className="lib-layout-container">
-      {/* Sidebar cố định bên trái, giữ nguyên trạng thái khi đổi trang */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Backdrop mờ che khi mở menu trên điện thoại / tablet */}
-      {sidebarOpen && (
-        <div
-          className="lib-mobile-backdrop"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Vùng nội dung bên phải gồm Topbar và Page Content động */}
-      <div className="lib-main-wrapper">
-        <Topbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
-        <main className="lib-content-area">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
+  return useMemo(() => {
+    if (user.isAdmin) {
+      return <AdminLayout />;
+    }
+    if (user.isStaff) {
+      return <StaffLayout />;
+    }
+    return <UserLayout />;
+  }, [user.isAdmin, user.isStaff]);
 }

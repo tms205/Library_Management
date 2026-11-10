@@ -1,5 +1,6 @@
 package com.librarymanagement.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -24,4 +25,27 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 		   "AND (:search IS NULL OR :search = '' OR LOWER(a.email) LIKE LOWER(CONCAT('%', :search, '%'))) " +
 		   "ORDER BY a.id ASC")
 	Page<Account> searchAccountsForRoleManagement(@Param("search") String search, Pageable pageable);
+
+	// Tìm các tài khoản đang hoạt động sở hữu quyền cụ thể (ví dụ BORROW_APPROVE, RETURN_CONFIRM)
+	@Query("SELECT DISTINCT a FROM Account a " +
+		   "JOIN a.permissionGroups pg " +
+		   "JOIN pg.permissions p " +
+		   "WHERE p.name = :permissionName " +
+		   "AND a.enabled = true " +
+		   "AND (a.isDelete IS NULL OR a.isDelete = false)")
+	List<Account> findActiveAccountsByPermissionName(@Param("permissionName") String permissionName);
+
+	// Lấy danh sách tên quyền hiệu lực hiện hành của tài khoản trực tiếp từ cơ sở dữ liệu
+	@Query("SELECT DISTINCT p.name FROM Account a " +
+		   "JOIN a.permissionGroups pg " +
+		   "JOIN pg.permissions p " +
+		   "WHERE a.email = :email " +
+		   "AND a.enabled = true " +
+		   "AND (a.isDelete IS NULL OR a.isDelete = false)")
+	List<String> findActivePermissionNamesByEmail(@Param("email") String email);
+
+	// Tìm danh sách tài khoản thuộc một nhóm quyền cụ thể
+	@Query("SELECT a FROM Account a JOIN a.permissionGroups pg WHERE pg.id = :groupId " +
+		   "AND (a.isDelete IS NULL OR a.isDelete = false) ORDER BY a.id ASC")
+	Page<Account> findAccountsByPermissionGroupId(@Param("groupId") Long groupId, Pageable pageable);
 }

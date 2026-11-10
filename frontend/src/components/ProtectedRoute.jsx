@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { getAccessToken } from '../utils/auth';
+import { getAccessToken, parseJwt, isTokenValid, getRefreshToken } from '../utils/auth';
 
 export default function ProtectedRoute() {
   const location = useLocation();
@@ -7,7 +7,7 @@ export default function ProtectedRoute() {
 
   // Chỉ về login khi hoàn toàn không có access token.
   // Token hết hạn sẽ để axiosClient xử lý Refresh Token.
-  if (!token) {
+  if (!token || !parseJwt(token) || (!isTokenValid(token) && !getRefreshToken())) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

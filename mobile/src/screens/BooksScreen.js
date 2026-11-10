@@ -272,7 +272,8 @@ export default function BooksScreen() {
           onPress: async () => {
             try {
               setBorrowingId(book.id);
-              const res = await borrowBooksApi(book.id);
+              const reqId = `mob-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+              const res = await borrowBooksApi(book.id, reqId);
               Alert.alert(
                 'Thành công',
                 res.message || 'Đã gửi yêu cầu mượn thành công! Vui lòng chờ thủ thư xác nhận.',

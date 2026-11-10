@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "866072302136",
+    "project_id": "library-management-81691",
+    "storage_bucket": "library-management-81691.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:866072302136:android:c632fc3b67c06429cf4ccd",
+        "android_client_info": {
+          "package_name": "com.sparkminds.librarymanagement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBE_AU0ZZ9iBMqm74OUebRRWLy67dqGMSc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

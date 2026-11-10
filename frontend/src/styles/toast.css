@@ -1,0 +1,188 @@
+@import './design-tokens.css';
+
+/* =========================================================================
+   AURA LIBRARY — ENTERPRISE FLOATING TOAST NOTIFICATION SYSTEM
+   Zero Layout Thrashing • Auto Dismiss • Smooth Slide & Spring Physics
+   ========================================================================= */
+
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+
+.toast-item {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  color: var(--text-primary);
+  font-family: inherit;
+  animation: toast-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+[data-theme="dark"] .toast-item {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+.toast-item.exiting {
+  animation: toast-slide-out 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+
+/* Toast Variants */
+.toast-success {
+  border-left: 4px solid var(--status-success);
+}
+.toast-success .toast-icon {
+  color: var(--status-success);
+}
+
+.toast-error {
+  border-left: 4px solid var(--status-danger);
+}
+.toast-error .toast-icon {
+  color: var(--status-danger);
+}
+
+.toast-warning {
+  border-left: 4px solid var(--status-warning);
+}
+.toast-warning .toast-icon {
+  color: var(--status-warning);
+}
+
+.toast-info {
+  border-left: 4px solid var(--status-info);
+}
+.toast-info .toast-icon {
+  color: var(--status-info);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toast-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.toast-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  margin-top: -2px;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.toast-close-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-surface-elevated);
+}
+
+/* Progress countdown bar */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.toast-progress-bar {
+  height: 100%;
+  animation: toast-timer linear forwards;
+}
+
+.toast-success .toast-progress-bar {
+  background: var(--status-success);
+}
+.toast-error .toast-progress-bar {
+  background: var(--status-danger);
+}
+.toast-warning .toast-progress-bar {
+  background: var(--status-warning);
+}
+.toast-info .toast-progress-bar {
+  background: var(--status-info);
+}
+
+@keyframes toast-timer {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

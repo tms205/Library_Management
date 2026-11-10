@@ -10,6 +10,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.sparkminds.librarymanagement",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#0f172a",
@@ -18,8 +20,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
+    "plugins": [
+      "expo-notifications"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1ec34f88-b50d-4efd-ad21-4cd24af4c62f"
+      }
     }
   }
 }

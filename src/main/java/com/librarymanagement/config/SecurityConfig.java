@@ -19,6 +19,8 @@ import com.librarymanagement.security.JwtAuthencationFilter;
 import com.librarymanagement.security.MaintenanceModeFilter;
 import com.librarymanagement.service.SystemConfigService;
 
+import jakarta.servlet.DispatcherType;
+
 @Configuration
 public class SecurityConfig {
 
@@ -56,6 +58,10 @@ public class SecurityConfig {
 				)
 
 				.authorizeHttpRequests(auth -> auth//
+
+						// Cho phép các async dispatch / forward / error nội bộ của Servlet container
+						// Bảo vệ an ninh và JWT/RBAC vẫn được áp dụng chặt chẽ 100% trên request ban đầu (DispatcherType.REQUEST)
+						.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
 
 						// swagger
 						.requestMatchers(//
@@ -156,12 +162,12 @@ public class SecurityConfig {
 						.hasAuthority("MEMBER_DELETE")//
 
 						// BORROW / RETURN PERMISSIONS
-						// Staff / Admin: Xem danh sach quan ly muon tra
+						// Staff / Admin: Xem danh sach quan ly muon tra (Hỗ trợ cả người có BORROW_APPROVE hoặc RETURN_CONFIRM)
 						.requestMatchers(//
 								HttpMethod.GET, //
 								"/api/borrow/manage"//
 						)//
-						.hasAuthority("BORROW_APPROVE")//
+						.hasAnyAuthority("BORROW_APPROVE", "RETURN_CONFIRM")//
 
 						// User: Xem sach cua toi
 						.requestMatchers(//

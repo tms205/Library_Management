@@ -1,4 +1,7 @@
+import NotFound from './pages/NotFound';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -24,7 +27,9 @@ import ChangeEmail from './pages/ChangeEmail';
 
 function App() {
   return (
-    <BrowserRouter>
+    <ThemeProvider>
+      <ToastProvider>
+        <BrowserRouter>
       <Routes>
         {/* ========================================================
             PUBLIC AUTH ROUTES
@@ -58,7 +63,7 @@ function App() {
                 />
               }
             >
-              <Route path="/books/manage" element={<BookManagement />} />
+              <Route element={<PermissionRoute permissions={['BOOK_VIEW']} />}><Route path="/books/manage" element={<BookManagement />} /></Route>
             </Route>
 
             {/* Quản lý thành viên: MEMBER_VIEW */}
@@ -67,12 +72,12 @@ function App() {
             </Route>
 
             {/* Mượn sách: BORROW_BOOK */}
-            <Route element={<PermissionRoute permissions={['BORROW_BOOK']} />}>
+            <Route element={<PermissionRoute permissions={['BORROW_BOOK', 'BOOK_VIEW']} requireAll />}>
               <Route path="/borrow" element={<BorrowBook />} />
             </Route>
 
             {/* Sách của tôi: BORROW_BOOK hoặc RETURN_BOOK */}
-            <Route element={<PermissionRoute permissions={['BORROW_BOOK', 'RETURN_BOOK']} />}>
+            <Route element={<PermissionRoute permissions={['BORROW_BOOK']} />}>
               <Route path="/return" element={<ReturnBook />} />
               <Route path="/my-books" element={<ReturnBook />} />
             </Route>
@@ -101,10 +106,12 @@ function App() {
         {/* ========================================================
             FALLBACK ROUTE
             ======================================================== */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
-  );
+    </ToastProvider>
+  </ThemeProvider>
+);
 }
 
 export default App;

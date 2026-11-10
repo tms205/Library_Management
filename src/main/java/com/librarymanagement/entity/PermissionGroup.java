@@ -33,6 +33,9 @@ public class PermissionGroup {
 
 	private String description;
 
+	@Column(name = "is_default", nullable = false)
+	private Boolean isDefault = false;
+
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(//
 			name = "group_permissions", //

@@ -20,6 +20,7 @@ import {
   rejectBorrowApi,
   confirmReturnApi,
 } from '../api/borrowApi';
+import { useAuth } from '../context/AuthContext';
 
 const STATUS_MAP = {
   PENDING: { label: 'Chờ duyệt mượn', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
@@ -37,12 +38,28 @@ const FILTER_TABS = [
   { key: 'RETURNED', label: 'Đã xong' },
 ];
 
-export default function BorrowManagementScreen() {
+export default function BorrowManagementScreen({ route }) {
+  const { userInfo } = useAuth();
+  const permissions = Array.isArray(userInfo?.permissions) ? userInfo.permissions : [];
+  const canApprove =
+    userInfo?.role === 'ADMIN' || permissions.includes('BORROW_APPROVE');
+  const canConfirmReturn =
+    userInfo?.role === 'ADMIN' || permissions.includes('RETURN_CONFIRM');
+
+  // Nếu người dùng chỉ có quyền RETURN_CONFIRM (không có BORROW_APPROVE), tự động focus vào tab 'RETURN_PENDING'
+  const defaultTab = (!canApprove && canConfirmReturn) ? 'RETURN_PENDING' : 'ALL';
+  const initialStatus = route?.params?.status || defaultTab;
   const [records, setRecords] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [activeFilter, setActiveFilter] = useState(initialStatus);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [actionId, setActionId] = useState(null);
+
+  useEffect(() => {
+    if (route?.params?.status) {
+      setActiveFilter(route.params.status);
+    }
+  }, [route?.params?.status]);
 
   // =========================================================================
   // STATE TÌM KIẾM & BỘ LỌC CHO MOBILE
@@ -260,8 +277,8 @@ export default function BorrowManagementScreen() {
         </Text>
         <Text style={styles.infoText}>📥 Ngày trả: <Text style={styles.infoVal}>{item.returnDate || 'Chưa trả'}</Text></Text>
 
-        {/* Action Buttons for Staff/Admin */}
-        {item.status === 'PENDING' && (
+        {/* Action Buttons: Chỉ hiển thị nút Duyệt mượn/Từ chối nếu có quyền BORROW_APPROVE */}
+        {item.status === 'PENDING' && canApprove && (
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.approveBtn, isBusy && styles.btnDisabled]}
@@ -285,7 +302,8 @@ export default function BorrowManagementScreen() {
           </View>
         )}
 
-        {item.status === 'RETURN_PENDING' && (
+        {/* Action Buttons: Chỉ hiển thị nút Xác nhận trả nếu có quyền RETURN_CONFIRM */}
+        {item.status === 'RETURN_PENDING' && canConfirmReturn && (
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.confirmReturnBtn, isBusy && styles.btnDisabled]}

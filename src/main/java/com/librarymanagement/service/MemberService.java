@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.librarymanagement.dto.request.CreateMemberRequest;
 import com.librarymanagement.dto.request.UpdateMemberRequest;
+import com.librarymanagement.dto.response.MemberResponse;
 import com.librarymanagement.entity.Account;
 import com.librarymanagement.entity.BorrowStatus;
 import com.librarymanagement.entity.Member;
@@ -48,34 +49,47 @@ public class MemberService {
 
 	// lay tat ca member
 	@Transactional(readOnly = true)
-	public List<Member> getAllMembers() {
+	public List<MemberResponse> getAllMembers() {
 
-		return memberRepository.findAll();
+		return memberRepository.findAll()
+				.stream()
+				.map(this::toResponse)
+				.toList();
 	}
 
 	// lay member theo id
 	@Transactional(readOnly = true)
-	public Member getMemberById(Long id) {
+	public MemberResponse getMemberById(Long id) {
 
-		return memberRepository.findById(id)//
-				.orElseThrow(() -> new ResourceNotFoundException(//
-						"Không tìm thấy member có id: " + id));//
+		Member member = memberRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException(
+						"Không tìm thấy member có id: " + id));
+
+		return toResponse(member);
+	}
+
+	@Transactional(readOnly = true)
+	public Member getMemberEntityById(Long id) {
+
+		return memberRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException(
+						"Không tìm thấy member có id: " + id));
 	}
 
 	// tao member
 	@Transactional
-	public Member createMember(CreateMemberRequest request) {
+	public MemberResponse createMember(CreateMemberRequest request) {
 
-		Account account = accountRepository.findById(//
-				request.getAccountId())//
-				.orElseThrow(() -> //
-				new ResourceNotFoundException(//
-						"Không tìm thấy account có id: "//
+		Account account = accountRepository.findById(
+				request.getAccountId())
+				.orElseThrow(() -> 
+				new ResourceNotFoundException(
+						"Không tìm thấy account có id: "
 								+ request.getAccountId()));
 
 		if (memberRepository.existsByAccount_Id(account.getId())) {
 
-			throw new ConflictException(//
+			throw new ConflictException(
 					"Account này đã có Member!");
 		}
 
@@ -87,15 +101,16 @@ public class MemberService {
 		member.setAddress(request.getAddress());
 		member.setAccount(account);
 
-		return memberRepository.save(member);
+		Member savedMember = memberRepository.save(member);
+		return toResponse(savedMember);
 	}
 
 	// update member
 	@Transactional
-	public Member updateMember(Long id, UpdateMemberRequest request) {
+	public MemberResponse updateMember(Long id, UpdateMemberRequest request) {
 
-		Member member = memberRepository.findById(id)//
-				.orElseThrow(() -> new ResourceNotFoundException(//
+		Member member = memberRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException(
 						"Không tìm thấy member có id: " + id));
 
 		member.setFullName(request.getFullName());
@@ -103,15 +118,16 @@ public class MemberService {
 		member.setPhone(request.getPhone());
 		member.setAddress(request.getAddress());
 
-		return memberRepository.save(member);
+		Member savedMember = memberRepository.save(member);
+		return toResponse(savedMember);
 	}
 
 	// XÓA ĐỘC GIẢ (XÓA MỀM: TÌM SANG ACCOUNT VÀ CHUYỂN IS_DELETE TỪ 0 -> 1)
 	@Transactional
 	public void deleteMember(Long id) {
 
-		Member member = memberRepository.findById(id)//
-				.orElseThrow(() -> new ResourceNotFoundException(//
+		Member member = memberRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException(
 						"Không tìm thấy member có id: " + id));
 
 		Account account = member.getAccount();
@@ -148,7 +164,7 @@ public class MemberService {
 	// KHÓA / MỞ KHÓA TÀI KHOẢN ĐỘC GIẢ (THAY VÌ XÓA MẤT LỊCH SỬ THƯ VIỆN)
 	// =========================================================================
 	@Transactional
-	public Member updateMemberStatus(Long memberId, Boolean enabled) {
+	public MemberResponse updateMemberStatus(Long memberId, Boolean enabled) {
 		Member member = memberRepository.findById(memberId)
 				.orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy độc giả có id: " + memberId));
 
@@ -169,21 +185,21 @@ public class MemberService {
 		}
 
 		accountRepository.save(account);
-		return member;
+		return toResponse(member);
 	}
 
 	// search + paging + sorting
 	@Transactional(readOnly = true)
-	public Page<Member> searchMember(//
-			String fullName, //
-			String phone, //
-			String address, //
-			int page, //
-			int size, //
-			String sortBy, //
-			String direction, //
-			LocalDate fromDate, //
-			LocalDate toDate, //
+	public Page<MemberResponse> searchMember(
+			String fullName,
+			String phone,
+			String address,
+			int page,
+			int size,
+			String sortBy,
+			String direction,
+			LocalDate fromDate,
+			LocalDate toDate,
 			Long bookId) {
 
 		// page khong duoc am
@@ -197,11 +213,11 @@ public class MemberService {
 		}
 
 		// chi cho sort cac field nay
-		if (!sortBy.equals("id")//
-				&& !sortBy.equals("fullName")//
-				&& !sortBy.equals("dateOfBirth")//
-				&& !sortBy.equals("phone")//
-				&& !sortBy.equals("address")) {//
+		if (!sortBy.equals("id")
+				&& !sortBy.equals("fullName")
+				&& !sortBy.equals("dateOfBirth")
+				&& !sortBy.equals("phone")
+				&& !sortBy.equals("address")) {
 
 			sortBy = "id";
 		}
@@ -214,20 +230,54 @@ public class MemberService {
 			sortDirection = Sort.Direction.ASC;
 		}
 
-		Pageable pageable = PageRequest.of(page, //
-				size, //
-				Sort.by(sortDirection, sortBy)//
+		Pageable pageable = PageRequest.of(page,
+				size,
+				Sort.by(sortDirection, sortBy)
 		);
 
-		Specification<Member> spec = //
-				MemberSpecification.isNotDeleted()//
-						.and(MemberSpecification.isNotAdmin())//
-						.and(MemberSpecification.hasFullName(fullName))//
-						.and(MemberSpecification.hasPhone(phone))//
-						.and(MemberSpecification.hasAddress(address))//
-						.and(MemberSpecification.hasDateOfBirthBetween(fromDate, toDate))//
-						.and(MemberSpecification.hasBorrowedBook(bookId));//
+		Specification<Member> spec = 
+				MemberSpecification.isNotDeleted()
+						.and(MemberSpecification.isNotAdmin())
+						.and(MemberSpecification.hasFullName(fullName))
+						.and(MemberSpecification.hasPhone(phone))
+						.and(MemberSpecification.hasAddress(address))
+						.and(MemberSpecification.hasDateOfBirthBetween(fromDate, toDate))
+						.and(MemberSpecification.hasBorrowedBook(bookId));
 
-		return memberRepository.findAll(spec, pageable);
+		return memberRepository.findAll(spec, pageable).map(this::toResponse);
+	}
+
+	// Chuyen Member Entity thanh MemberResponse DTO trong Transaction Session an toan
+	public MemberResponse toResponse(Member member) {
+		if (member == null) {
+			return null;
+		}
+
+		Account account = member.getAccount();
+
+		Boolean enabled = (account != null && account.getEnabled() != null)
+				? account.getEnabled()
+				: true;
+
+		Integer isDelete = (account != null && Boolean.TRUE.equals(account.getIsDelete()))
+				? 1
+				: 0;
+
+		String role = (account != null && account.getRole() != null)
+				? account.getRole().name()
+				: "USER";
+
+		return new MemberResponse(
+				member.getId(),
+				member.getFullName(),
+				member.getDateOfBirth(),
+				member.getPhone(),
+				member.getAddress(),
+				account != null ? account.getId() : null,
+				account != null ? account.getEmail() : null,
+				enabled,
+				isDelete,
+				role
+		);
 	}
 }

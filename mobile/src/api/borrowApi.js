@@ -1,10 +1,14 @@
 import client from './client';
 
-export const borrowBooksApi = async (bookIds) => {
+export const borrowBooksApi = async (bookIds, requestId = null) => {
   const ids = Array.isArray(bookIds) ? bookIds.map(Number) : [Number(bookIds)];
-  const response = await client.post('/api/borrow', {
+  const payload = {
     bookIds: ids,
-  });
+  };
+  if (requestId) {
+    payload.requestId = requestId;
+  }
+  const response = await client.post('/api/borrow', payload);
   return response.data;
 };
 

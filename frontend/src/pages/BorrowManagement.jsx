@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import ErrorState from '../components/ErrorState';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   getBorrowManagement,
   approveBorrow,
@@ -6,84 +8,107 @@ import {
   confirmReturn,
 } from '../api/borrowApi';
 import { hasPermission } from '../utils/auth';
+import { useToast } from '../context/ToastContext';
 import StatusBadge from '../components/StatusBadge';
+import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
+import Pagination from '../components/Pagination';
+import { SkeletonTable } from '../components/Skeleton';
+import {
+  Filter,
+  Search,
+  RotateCcw,
+  Check,
+  X,
+  CheckCircle2,
+  Clock,
+  Inbox,
+  AlertTriangle,
+} from 'lucide-react';
 
 import '../styles/borrowManagement.css';
 
 function BorrowManagement() {
+  const [params] = useSearchParams();
+  const urlStatus = ['PENDING','BORROWED','RETURN_PENDING','RETURNED','REJECTED'].includes(params.get('status')) ? params.get('status') : 'ALL';
+  const requestVersion = useRef(0);
+  const mounted = useRef(false);
+  const [loadError, setLoadError] = useState('');
   const canApprove = hasPermission('BORROW_APPROVE');
   const canConfirmReturn = hasPermission('RETURN_CONFIRM');
+  const toast = useToast();
 
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('success');
 
-  // =========================================================================
-  // STATE BỘ LỌC TÌM KIẾM PHIẾU MƯỢN TRẢ
-  // - Ô nhập tạm thời (thay đổi khi gõ hoặc chọn ngày)
-  // - appliedFilters: chỉ cập nhật khi nhấn nút "Tìm kiếm" hoặc "Đặt lại"
-  // =========================================================================
+  // Modal từ chối mượn
+  const [itemToReject, setItemToReject] = useState(null);
+  const [isRejecting, setIsRejecting] = useState(false);
+
+  // Phân trang danh sách
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Bộ lọc tìm kiếm
   const [filterMemberName, setFilterMemberName] = useState('');
   const [filterBookTitle, setFilterBookTitle] = useState('');
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const [filterStatus, setFilterStatus] = useState(urlStatus);
+  const [onlyOverdue, setOnlyOverdue] = useState(params.get('overdue') === 'true');
 
   const [appliedFilters, setAppliedFilters] = useState({
     memberName: '',
     bookTitle: '',
     fromDate: '',
     toDate: '',
-    status: 'ALL',
+    status: urlStatus,
   });
 
-  const hasActiveFilters = Boolean(
-    appliedFilters.memberName ||
-    appliedFilters.bookTitle ||
-    appliedFilters.fromDate ||
-    appliedFilters.toDate ||
-    appliedFilters.status !== 'ALL',
-  );
-
-  const buildQueryParams = (filters) => {
-    const params = {};
-    if (filters.memberName?.trim()) params.memberName = filters.memberName.trim();
-    if (filters.bookTitle?.trim()) params.bookTitle = filters.bookTitle.trim();
-    if (filters.fromDate) params.fromDate = filters.fromDate;
-    if (filters.toDate) params.toDate = filters.toDate;
-    if (filters.status && filters.status !== 'ALL') params.status = filters.status;
-    return params;
-  };
-
-  const loadRecords = async (filters = appliedFilters) => {
+  const loadRecords = useCallback(async (filters = {}) => {
+    const version = ++requestVersion.current;
     try {
       setLoading(true);
-      const queryParams = buildQueryParams(filters);
-      const response = await getBorrowManagement(queryParams);
-      setRecords(Array.isArray(response.data) ? response.data : []);
+      setLoadError('');
+      const params = {};
+      if (filters.memberName?.trim()) params.memberName = filters.memberName.trim();
+      if (filters.bookTitle?.trim()) params.bookTitle = filters.bookTitle.trim();
+      if (filters.fromDate) params.fromDate = filters.fromDate;
+      if (filters.toDate) params.toDate = filters.toDate;
+      if (filters.status && filters.status !== 'ALL') params.status = filters.status;
+
+      const res = await getBorrowManagement(params);
+      const data = Array.isArray(res.data) ? res.data : [];
+
+      if (!mounted.current || version !== requestVersion.current) return;
+      setRecords(data);
+      setPage(0);
     } catch (error) {
-      console.error(error);
+
+      if (!mounted.current || version !== requestVersion.current) return;
+      setLoadError(error.response?.data?.message || 'Không thể tải dữ liệu mượn trả.');
       setRecords([]);
-      setMessageType('error');
-      setMessage(
+      toast.error(
         error.response?.data?.message ||
           error.response?.data?.error ||
-          'Không thể tải danh sách quản lý mượn trả!',
+          'Không thể tải danh sách mượn trả từ hệ thống!',
       );
     } finally {
-      setLoading(false);
+      if (mounted.current && version === requestVersion.current) setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    loadRecords();
-  }, []);
+    let active = true;
+    mounted.current = true;
+    setFilterStatus(urlStatus);
+    Promise.resolve().then(() => { if (active) loadRecords({ status: urlStatus }); });
+    return () => { active = false; mounted.current = false; };
+  }, [loadRecords, urlStatus]);
 
   const handleSearch = (e) => {
-    e?.preventDefault();
+    e.preventDefault();
     const nextFilters = {
       memberName: filterMemberName,
       bookTitle: filterBookTitle,
@@ -101,30 +126,28 @@ function BorrowManagement() {
     setFilterFromDate('');
     setFilterToDate('');
     setFilterStatus('ALL');
-
-    const defaultFilters = {
+    setOnlyOverdue(false);
+    const emptyFilters = {
       memberName: '',
       bookTitle: '',
       fromDate: '',
       toDate: '',
       status: 'ALL',
     };
-    setAppliedFilters(defaultFilters);
-    loadRecords(defaultFilters);
+    setAppliedFilters(emptyFilters);
+    loadRecords(emptyFilters);
   };
 
   const handleApprove = async (id) => {
+    if (actionLoadingId !== null) return;
     try {
       setActionLoadingId(id);
-      setMessage('');
       await approveBorrow(id);
-      setMessageType('success');
-      setMessage(`Duyệt yêu cầu mượn #${id} thành công! Kho sách đã được tự động trừ 1 cuốn.`);
-      await loadRecords();
+      toast.success(`Duyệt thành công yêu cầu mượn #${id}. Kho sách đã được tự động trừ 1 cuốn.`);
+      await loadRecords(appliedFilters);
     } catch (error) {
-      console.error(error);
-      setMessageType('error');
-      setMessage(
+
+      toast.error(
         error.response?.data?.message ||
           error.response?.data?.error ||
           'Không thể duyệt yêu cầu mượn!',
@@ -134,39 +157,36 @@ function BorrowManagement() {
     }
   };
 
-  const handleReject = async (id) => {
+  const confirmReject = async () => {
+    if (!itemToReject || isRejecting) return;
     try {
-      setActionLoadingId(id);
-      setMessage('');
-      await rejectBorrow(id);
-      setMessageType('success');
-      setMessage(`Từ chối yêu cầu mượn #${id} thành công!`);
-      await loadRecords();
+      setIsRejecting(true);
+      await rejectBorrow(itemToReject.id);
+      toast.success(`Đã từ chối yêu cầu mượn #${itemToReject.id}.`);
+      setItemToReject(null);
+      await loadRecords(appliedFilters);
     } catch (error) {
-      console.error(error);
-      setMessageType('error');
-      setMessage(
+
+      toast.error(
         error.response?.data?.message ||
           error.response?.data?.error ||
           'Không thể từ chối yêu cầu mượn!',
       );
     } finally {
-      setActionLoadingId(null);
+      setIsRejecting(false);
     }
   };
 
   const handleConfirmReturn = async (id) => {
+    if (actionLoadingId !== null) return;
     try {
       setActionLoadingId(id);
-      setMessage('');
       await confirmReturn(id);
-      setMessageType('success');
-      setMessage(`Xác nhận nhận lại sách cho phiếu #${id} thành công! Kho sách đã được cộng lại 1 cuốn.`);
-      await loadRecords();
+      toast.success(`Đã xác nhận thu hồi sách cho phiếu #${id}. Kho sách đã được tự động cộng 1 cuốn.`);
+      await loadRecords(appliedFilters);
     } catch (error) {
-      console.error(error);
-      setMessageType('error');
-      setMessage(
+
+      toast.error(
         error.response?.data?.message ||
           error.response?.data?.error ||
           'Không thể xác nhận trả sách!',
@@ -176,36 +196,45 @@ function BorrowManagement() {
     }
   };
 
+  const hasActiveFilters =
+    appliedFilters.memberName ||
+    appliedFilters.bookTitle ||
+    appliedFilters.fromDate ||
+    appliedFilters.toDate ||
+    appliedFilters.status !== 'ALL' ||
+    onlyOverdue;
+
+  const filteredRecords = onlyOverdue
+    ? records.filter((r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED')
+    : records;
+
+  const overdueCount = records.filter(
+    (r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED'
+  ).length;
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
+  const paginatedRecords = useMemo(() => {
+    const start = page * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, page, pageSize]);
+
   return (
     <div className="bm-page">
       <div className="bm-page-wrapper">
         <header className="bm-page-header">
           <div>
-            <div className="bm-page-pretitle">Management / Borrow & Return Workflow</div>
+            <div className="bm-page-pretitle">THƯ VIỆN / LƯU HÀNH</div>
             <h1>Quản lý mượn & trả sách</h1>
-            <p>Xét duyệt yêu cầu mượn, từ chối phiếu mượn hoặc xác nhận thu hồi sách từ độc giả.</p>
+            <p>Xét duyệt yêu cầu mượn sách, từ chối phiếu mượn hoặc xác nhận thu hồi sách từ độc giả.</p>
           </div>
         </header>
 
-        {message && (
-          <div
-            className={`bm-alert ${
-              messageType === 'error' ? 'bm-alert-error' : 'bm-alert-success'
-            }`}
-          >
-            <span className="bm-alert-dot" />
-            <span>{message}</span>
-            <button type="button" onClick={() => setMessage('')} aria-label="Đóng thông báo">
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* KHỐI BỘ LỌC TÌM KIẾM PHIẾU MƯỢN TRẢ */}
+        {/* BỘ LỌC TÌM KIẾM */}
         <section className="bm-search-card">
           <div className="bm-search-header">
             <div className="bm-search-title">
-              <span>🔍</span>
+              <Filter size={18} />
               <span>Bộ lọc & Tìm kiếm phiếu mượn</span>
             </div>
             {hasActiveFilters && (
@@ -215,49 +244,33 @@ function BorrowManagement() {
 
           <form onSubmit={handleSearch} className="bm-search-form">
             <div className="bm-search-grid">
-              <div className="bm-form-group">
+              <div className="form-group">
                 <label htmlFor="filter-member">Tên độc giả</label>
-                <input
-                  id="filter-member"
-                  type="text"
-                  placeholder="Nhập tên độc giả..."
-                  value={filterMemberName}
-                  onChange={(e) => setFilterMemberName(e.target.value)}
-                />
+                <div className="input-with-icon">
+                  <input
+                    id="filter-member"
+                    type="text"
+                    placeholder="Tìm theo tên độc giả..."
+                    value={filterMemberName}
+                    onChange={(e) => setFilterMemberName(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="bm-form-group">
+              <div className="form-group">
                 <label htmlFor="filter-book">Tên sách</label>
-                <input
-                  id="filter-book"
-                  type="text"
-                  placeholder="Nhập tên sách..."
-                  value={filterBookTitle}
-                  onChange={(e) => setFilterBookTitle(e.target.value)}
-                />
+                <div className="input-with-icon">
+                  <input
+                    id="filter-book"
+                    type="text"
+                    placeholder="Tìm theo tên cuốn sách..."
+                    value={filterBookTitle}
+                    onChange={(e) => setFilterBookTitle(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="bm-form-group">
-                <label htmlFor="filter-from-date">Từ ngày</label>
-                <input
-                  id="filter-from-date"
-                  type="date"
-                  value={filterFromDate}
-                  onChange={(e) => setFilterFromDate(e.target.value)}
-                />
-              </div>
-
-              <div className="bm-form-group">
-                <label htmlFor="filter-to-date">Đến ngày</label>
-                <input
-                  id="filter-to-date"
-                  type="date"
-                  value={filterToDate}
-                  onChange={(e) => setFilterToDate(e.target.value)}
-                />
-              </div>
-
-              <div className="bm-form-group">
+              <div className="form-group">
                 <label htmlFor="filter-status">Trạng thái phiếu</label>
                 <select
                   id="filter-status"
@@ -268,32 +281,66 @@ function BorrowManagement() {
                   <option value="PENDING">Chờ duyệt mượn (PENDING)</option>
                   <option value="BORROWED">Đang mượn (BORROWED)</option>
                   <option value="RETURN_PENDING">Chờ xác nhận trả (RETURN_PENDING)</option>
-                  <option value="RETURNED">Đã hoàn trả (RETURNED)</option>
-                  <option value="REJECTED">Đã từ chối (REJECTED)</option>
+                  <option value="RETURNED">Đã trả (RETURNED)</option>
+                  <option value="REJECTED">Bị từ chối (REJECTED)</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="filter-from-date">Từ ngày mượn</label>
+                <input
+                  id="filter-from-date"
+                  type="date"
+                  value={filterFromDate}
+                  onChange={(e) => setFilterFromDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="filter-to-date">Đến ngày mượn</label>
+                <input
+                  id="filter-to-date"
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ justifyContent: 'flex-end' }}>
+                <label style={{ visibility: 'hidden' }}>Lọc quá hạn</label>
+                <button
+                  type="button"
+                  className={`btn ${onlyOverdue ? 'btn-danger' : 'btn-outline'}`}
+                  style={{ height: '42px', width: '100%' }}
+                  onClick={() => { setOnlyOverdue(!onlyOverdue); setPage(0); }}
+                >
+                  <AlertTriangle size={15} />
+                  <span>Chỉ sách quá hạn ({overdueCount})</span>
+                </button>
               </div>
             </div>
 
             <div className="bm-search-actions">
               <button
                 type="button"
-                className="bm-btn bm-btn-outline"
+                className="btn btn-outline"
                 onClick={handleReset}
                 disabled={loading}
               >
-                ↺ Đặt lại
+                <RotateCcw size={15} /> Đặt lại
               </button>
               <button
                 type="submit"
-                className="bm-btn bm-btn-primary"
+                className="btn btn-primary"
                 disabled={loading}
               >
-                🔍 Tìm kiếm
+                <Search size={15} /> Tìm kiếm
               </button>
             </div>
           </form>
         </section>
 
+        {/* BẢNG DỮ LIỆU */}
         <section className="bm-card">
           <div className="bm-card-header">
             <div>
@@ -301,58 +348,44 @@ function BorrowManagement() {
               <p>Lịch sử toàn diện các giao dịch mượn và trả sách trong hệ thống.</p>
             </div>
 
-            <div className="bm-card-badge">{records.length} BẢN GHI</div>
+            <div className="bm-card-badge">{filteredRecords.length} BẢN GHI</div>
           </div>
 
           <div className="bm-toolbar">
             <div className="bm-toolbar-summary">
               {hasActiveFilters ? (
                 <span className="bm-summary-text">
-                  Tìm thấy <strong>{records.length}</strong> kết quả khớp bộ lọc
+                  Tìm thấy <strong>{filteredRecords.length}</strong> kết quả khớp bộ lọc
                 </span>
               ) : (
                 <span className="bm-summary-text">
-                  Hiển thị <strong>{onlyOverdue ? records.filter((r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED').length : records.length}</strong> / {records.length} phiếu mượn
+                  Tổng số: <strong>{filteredRecords.length}</strong> phiếu giao dịch
                 </span>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {overdueCount > 0 && !onlyOverdue && (
               <button
                 type="button"
-                className={`bm-btn ${onlyOverdue ? 'bm-btn-reject' : 'bm-btn-outline'}`}
-                onClick={() => setOnlyOverdue(!onlyOverdue)}
-                style={{ fontSize: '15px', padding: '6px 12px' }}
+                className="bm-overdue-alert-pill"
+                onClick={() => { setOnlyOverdue(true); setPage(0); }}
               >
-                {onlyOverdue ? '✕ Xem toàn bộ' : '⚠️ Chỉ xem sách quá hạn'}
+                <AlertTriangle size={14} />
+                <span>Có <strong>{overdueCount}</strong> sách quá hạn cần thu hồi</span>
               </button>
-
-              <button
-                type="button"
-                className="bm-btn bm-btn-outline"
-                disabled={loading}
-                onClick={() => loadRecords(appliedFilters)}
-              >
-                <span>↻</span> Tải lại dữ liệu
-              </button>
-            </div>
+            )}
           </div>
 
           {loading ? (
-            <div className="bm-empty">
-              <span className="gt-spinner" style={{ marginRight: '8px' }} />
-              Đang tải danh sách mượn trả...
-            </div>
-          ) : records.length === 0 ? (
-            <div className="bm-empty" style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '42px', marginBottom: '12px' }}>📋</div>
-              <strong style={{ display: 'block', fontSize: '18px', color: '#1e293b', marginBottom: '6px' }}>
-                Hiện chưa có bản ghi mượn trả nào
-              </strong>
-              <span style={{ fontSize: '16px', color: '#64748b' }}>
-                Khi bạn đọc gửi yêu cầu mượn sách, các phiếu sẽ hiển thị tại đây để bạn phê duyệt.
-              </span>
-            </div>
+            <SkeletonTable rows={8} cols={10} />
+          ) : loadError ? (<ErrorState message={loadError} onRetry={() => loadRecords(appliedFilters)} />) : filteredRecords.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="Không có yêu cầu lưu hành nào"
+              description="Hiện chưa có phiếu mượn trả nào khớp với bộ lọc. Khi độc giả đăng ký mượn, yêu cầu sẽ lập tức xuất hiện tại đây."
+              secondaryActionLabel={hasActiveFilters ? 'Đặt lại bộ lọc' : undefined}
+              onSecondaryAction={handleReset}
+            />
           ) : (
             <div className="bm-table-wrapper">
               <table className="bm-table">
@@ -372,12 +405,16 @@ function BorrowManagement() {
                 </thead>
 
                 <tbody>
-                  {(onlyOverdue ? records.filter((r) => r.isOverdue && r.status !== 'RETURNED' && r.status !== 'REJECTED') : records).map((item) => {
+                  {paginatedRecords.map((item) => {
                     const isBusy = actionLoadingId === item.id;
-                    const isCurrentlyOverdue = item.isOverdue && item.status !== 'RETURNED' && item.status !== 'REJECTED';
+                    const isCurrentlyOverdue =
+                      item.isOverdue && item.status !== 'RETURNED' && item.status !== 'REJECTED';
 
                     return (
-                      <tr key={item.id} style={isCurrentlyOverdue ? { backgroundColor: '#fff5f5' } : {}}>
+                      <tr
+                        key={item.id}
+                        className={isCurrentlyOverdue ? 'bm-row-overdue' : ''}
+                      >
                         <td className="bm-mono">#{item.id}</td>
                         <td className="bm-mono">#{item.memberId}</td>
                         <td className="bm-member-name">{item.memberName}</td>
@@ -385,15 +422,17 @@ function BorrowManagement() {
                         <td className="bm-book-name">{item.bookTitle}</td>
                         <td>{item.borrowDate || '—'}</td>
                         <td>
-                          <div style={{ fontWeight: item.dueDate ? 600 : 400 }}>{item.dueDate || '—'}</div>
+                          <div style={{ fontWeight: item.dueDate ? 600 : 400 }}>
+                            {item.dueDate || '—'}
+                          </div>
                           {isCurrentlyOverdue && (
-                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#b91c1c', fontWeight: 700, background: '#fee2e2', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
-                              ⚠️ Quá hạn ({item.overdueDays} ngày)
+                            <span className="bm-overdue-tag">
+                              <Clock size={12} /> Quá hạn ({item.overdueDays} ngày)
                             </span>
                           )}
                           {item.status === 'RETURNED' && item.isOverdue && (
-                            <span style={{ display: 'inline-block', fontSize: '13px', color: '#b45309', fontWeight: 600, background: '#fef3c7', padding: '2px 6px', borderRadius: '4px', marginTop: '3px' }}>
-                              Trễ {item.overdueDays} ngày
+                            <span className="bm-returned-late-tag">
+                              <Clock size={12} /> Trả trễ {item.overdueDays} ngày
                             </span>
                           )}
                         </td>
@@ -404,43 +443,46 @@ function BorrowManagement() {
                         <td style={{ textAlign: 'center' }}>
                           {/* BORROW_APPROVE: Hiện nút Duyệt / Từ chối cho yêu cầu PENDING */}
                           {item.status === 'PENDING' && canApprove && (
-                            <div className="bm-action-group" style={{ justifyContent: 'center' }}>
+                            <div className="bm-action-group">
                               <button
                                 type="button"
-                                className="bm-btn bm-btn-approve"
-                                disabled={isBusy}
+                                className="bm-btn-approve"
+                                disabled={actionLoadingId !== null || isRejecting}
                                 onClick={() => handleApprove(item.id)}
                               >
-                                {isBusy ? '...' : 'Duyệt'}
+                                {isBusy ? <span className="spinner" /> : <Check size={14} />}
+                                <span>Duyệt</span>
                               </button>
                               <button
                                 type="button"
-                                className="bm-btn bm-btn-reject"
-                                disabled={isBusy}
-                                onClick={() => handleReject(item.id)}
+                                className="bm-btn-reject"
+                                disabled={actionLoadingId !== null || isRejecting}
+                                onClick={() => setItemToReject(item)}
                               >
-                                {isBusy ? '...' : 'Từ chối'}
+                                <X size={14} />
+                                <span>Từ chối</span>
                               </button>
                             </div>
                           )}
 
                           {/* RETURN_CONFIRM: Hiện nút Xác nhận trả cho yêu cầu RETURN_PENDING */}
                           {item.status === 'RETURN_PENDING' && canConfirmReturn && (
-                            <div className="bm-action-group" style={{ justifyContent: 'center' }}>
+                            <div className="bm-action-group">
                               <button
                                 type="button"
-                                className="bm-btn bm-btn-confirm"
-                                disabled={isBusy}
+                                className="bm-btn-confirm"
+                                disabled={actionLoadingId !== null || isRejecting}
                                 onClick={() => handleConfirmReturn(item.id)}
                               >
-                                {isBusy ? '...' : 'Xác nhận trả'}
+                                {isBusy ? <span className="spinner" /> : <CheckCircle2 size={14} />}
+                                <span>Xác nhận trả</span>
                               </button>
                             </div>
                           )}
 
                           {/* Trạng thái không có thao tác hoặc thiếu quyền */}
-                          {item.status !== 'PENDING' && item.status !== 'RETURN_PENDING' && (
-                            <span style={{ color: '#94a3b8', fontSize: '15px' }}>—</span>
+                          {!((item.status === 'PENDING' && canApprove) || (item.status === 'RETURN_PENDING' && canConfirmReturn)) && (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>—</span>
                           )}
                         </td>
                       </tr>
@@ -450,8 +492,38 @@ function BorrowManagement() {
               </table>
             </div>
           )}
+
+          {filteredRecords.length > pageSize && (
+            <div style={{ padding: '0 20px 16px' }}>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                totalElements={filteredRecords.length}
+                pageSize={pageSize}
+                onPageChange={(newPage) => setPage(newPage)}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setPage(0);
+                }}
+              />
+            </div>
+          )}
         </section>
       </div>
+
+      {/* Accessible Destructive Reject Borrow Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={Boolean(itemToReject)}
+        variant="danger"
+        title="Xác nhận từ chối yêu cầu mượn sách"
+        message="Bạn có chắc chắn muốn từ chối yêu cầu mượn này của độc giả? Sau khi từ chối, độc giả sẽ nhận được thông báo trạng thái Bị từ chối."
+        highlightText={itemToReject ? `Phiếu #${itemToReject.id} • Độc giả: ${itemToReject.memberName} • Sách: "${itemToReject.bookTitle}"` : ''}
+        confirmText="Từ chối mượn"
+        cancelText="Quay lại"
+        isLoading={isRejecting}
+        onConfirm={confirmReject}
+        onCancel={() => setItemToReject(null)}
+      />
     </div>
   );
 }

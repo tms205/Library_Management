@@ -29,8 +29,7 @@ export const parseJwt = (token = getAccessToken()) => {
     );
 
     return JSON.parse(jsonPayload);
-  } catch (error) {
-    console.error('Không thể giải mã JWT:', error);
+  } catch {
     return null;
   }
 };
@@ -108,19 +107,28 @@ export const getUserInfo = (token = getAccessToken()) => {
   // Xác định nhóm phân quyền thân thiện để hiển thị
   let groupName = 'Độc giả';
   let badgeColor = 'blue';
+  let roleType = 'USER';
 
   if (permissions.includes('SYSTEM_MAINTENANCE') || role === 'ADMIN') {
     groupName = 'Admin';
     badgeColor = 'purple';
-  } else if (permissions.includes('BORROW_APPROVE') || role === 'STAFF') {
+    roleType = 'ADMIN';
+  } else if (
+    permissions.includes('BORROW_APPROVE') ||
+    permissions.includes('RETURN_CONFIRM') ||
+    role === 'STAFF'
+  ) {
     groupName = 'Thủ thư (Staff)';
     badgeColor = 'amber';
+    roleType = 'STAFF';
   } else if (permissions.includes('BORROW_BOOK')) {
     groupName = 'Độc giả (User)';
     badgeColor = 'emerald';
+    roleType = 'USER';
   } else if (permissions.includes('BOOK_VIEW')) {
     groupName = 'Khách xem (View)';
     badgeColor = 'slate';
+    roleType = 'USER';
   }
 
   return {
@@ -130,6 +138,10 @@ export const getUserInfo = (token = getAccessToken()) => {
     permissions,
     groupName,
     badgeColor,
+    roleType,
+    isAdmin: roleType === 'ADMIN',
+    isStaff: roleType === 'STAFF',
+    isUser: roleType === 'USER',
   };
 };
 
@@ -146,8 +158,8 @@ export const logout = async () => {
     await axiosClient.post('/auth/logout', {
       refreshToken: refreshToken || '',
     });
-  } catch (error) {
-    console.warn('Lỗi khi gọi API logout:', error?.response?.data || error?.message);
+  } catch {
+    // Local credentials must also be cleared if the logout endpoint is unavailable.
   } finally {
     // Luôn dọn dẹp sạch sẽ storage và chuyển hướng về trang đăng nhập
     localStorage.removeItem('accessToken');

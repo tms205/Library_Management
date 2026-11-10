@@ -1,5 +1,6 @@
 package com.librarymanagement.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,4 +22,7 @@ public class SystemConfig {
 	private Long id;
 
 	private boolean maintenanceMode;
+
+	@Column(name = "borrow_duration_days", nullable = false)
+	private Integer borrowDurationDays = 7;
 }

@@ -9,7 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // - Bắt buộc phải dùng IP mạng Wi-Fi nội bộ (LAN) của máy tính chạy Spring Boot
 // - Cổng mặc định của Spring Boot là :8080 (không dùng nhầm :5173 của Web Frontend)
 // =========================================================================
-export const DEFAULT_BASE_URL = 'http://192.168.2.106:8080';
+export const DEFAULT_BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.50.171:8080';
 
 const IP_STORAGE_KEY = '@library_backend_ip';
 

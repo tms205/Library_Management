@@ -24,7 +24,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.librarymanagement.dto.response.BookResponse;
-import com.librarymanagement.entity.Book;
 import com.librarymanagement.service.BookService;
 
 class BookControllerTest {
@@ -51,16 +50,17 @@ class BookControllerTest {
 	@Test
 	void searchBooks_ShouldReturn200() {
 
-		Book book = org.mockito.Mockito.mock(Book.class);
+		BookResponse bookResponse = new BookResponse(
+				1L,
+				"Clean Code",
+				"9780132350884",
+				10,
+				null,
+				null,
+				Set.of()
+		);
 
-		when(book.getId()).thenReturn(1L);
-		when(book.getTitle()).thenReturn("Clean Code");
-		when(book.getIsbn()).thenReturn("9780132350884");
-		when(book.getQuantity()).thenReturn(10);
-		when(book.getPublishedDate()).thenReturn(null);
-		when(book.getAuthors()).thenReturn(Set.of());
-
-		Page<Book> page = new PageImpl<>(List.of(book));
+		Page<BookResponse> page = new PageImpl<>(List.of(bookResponse));
 
 		when(bookService.search(null, null, 0, 10, "title", "asc", "publishedDate", "desc")).thenReturn(page);
 
@@ -95,16 +95,17 @@ class BookControllerTest {
 	@Test
 	void getAllBooks_ShouldReturn200() throws Exception {
 
-		Book book = org.mockito.Mockito.mock(Book.class);
+		BookResponse bookResponse = new BookResponse(
+				1L,
+				"Effective Java",
+				"9780134685991",
+				8,
+				LocalDate.of(2018, 1, 6),
+				null,
+				Set.of()
+		);
 
-		when(book.getId()).thenReturn(1L);
-		when(book.getTitle()).thenReturn("Effective Java");
-		when(book.getIsbn()).thenReturn("9780134685991");
-		when(book.getQuantity()).thenReturn(8);
-		when(book.getPublishedDate()).thenReturn(LocalDate.of(2018, 1, 6));
-		when(book.getAuthors()).thenReturn(Set.of());
-
-		when(bookService.getAllBooks()).thenReturn(List.of(book));
+		when(bookService.getAllBooks()).thenReturn(List.of(bookResponse));
 
 		mockMvc.perform(get("/api/books")).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(1))
 				.andExpect(jsonPath("$[0].title").value("Effective Java"))

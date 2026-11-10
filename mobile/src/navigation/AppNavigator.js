@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
+import { setupNotificationNavigationListener } from '../services/pushNotificationService';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -28,7 +29,7 @@ function MainTabNavigator() {
       userInfo?.role === 'STAFF' ||
       (Array.isArray(userInfo?.permissions) &&
         userInfo?.permissions.some((p) =>
-          ['BORROW_APPROVE', 'MEMBER_VIEW', 'BOOK_CREATE', 'SYSTEM_MAINTENANCE'].includes(p),
+          ['BORROW_APPROVE', 'RETURN_CONFIRM', 'MEMBER_VIEW', 'BOOK_CREATE', 'SYSTEM_MAINTENANCE'].includes(p),
         )),
     );
 
@@ -130,6 +131,20 @@ function MainTabNavigator() {
 
 export default function AppNavigator() {
   const { userToken, isLoading } = useAuth();
+  const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
+    try {
+      const cleanup = setupNotificationNavigationListener(navigationRef);
+      return () => {
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
+      };
+    } catch (err) {
+      console.log('Mobile Navigation: Bỏ qua lỗi listener thông báo:', err?.message);
+    }
+  }, [navigationRef]);
 
   if (isLoading) {
     return (
@@ -141,7 +156,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {userToken == null ? (
           <>

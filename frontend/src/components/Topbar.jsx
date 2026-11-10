@@ -1,21 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getUserInfo, logout } from '../utils/auth';
+import {
+  Search,
+  Menu,
+  ArrowRight,
+  BookMarked,
+} from 'lucide-react';
+import { getUserInfo } from '../utils/auth';
 import { searchBooks } from '../api/bookApi';
+import ThemeToggle from './ThemeToggle';
 
 const ROUTE_TITLES = {
-  '/dashboard': { title: 'Dashboard', pretitle: 'Tổng quan hệ thống' },
-  '/books': { title: 'Danh sách sách', pretitle: 'Tra cứu & Danh mục' },
-  '/books/manage': { title: 'Quản lý kho sách', pretitle: 'Thủ thư / Quản trị' },
-  '/members': { title: 'Quản lý thành viên', pretitle: 'Hồ sơ độc giả & bạn đọc' },
-  '/borrow': { title: 'Mượn sách', pretitle: 'Tạo yêu cầu mượn mới' },
-  '/return': { title: 'Sách của tôi', pretitle: 'Lịch sử & Yêu cầu trả sách' },
-  '/my-books': { title: 'Sách của tôi', pretitle: 'Lịch sử & Yêu cầu trả sách' },
-  '/borrow-management': { title: 'Quản lý mượn / trả', pretitle: 'Xét duyệt & Xác nhận thu hồi sách' },
-  '/roles': { title: 'Phân quyền tài khoản', pretitle: 'Quản trị viên' },
-  '/system-config': { title: 'Cấu hình hệ thống', pretitle: 'Trạng thái & Chế độ bảo trì' },
-  '/change-password': { title: 'Đổi mật khẩu', pretitle: 'Bảo mật tài khoản' },
-  '/change-email': { title: 'Đổi email', pretitle: 'Cập nhật email xác thực' },
+  '/dashboard': { title: 'Bảng Điều Khiển', pretitle: 'Tổng quan hệ thống' },
+  '/books': { title: 'Tra Cứu Sách', pretitle: 'Kho sách & Khám phá tư liệu' },
+  '/books/manage': { title: 'Quản Lý Kho Sách', pretitle: 'Nghiệp vụ thủ thư & Quản trị' },
+  '/members': { title: 'Quản Lý Độc Giả', pretitle: 'Danh bạ thành viên & Thẻ bạn đọc' },
+  '/borrow': { title: 'Đăng Ký Mượn Sách', pretitle: 'Tạo phiếu mượn trực tuyến' },
+  '/return': { title: 'Sách Của Tôi', pretitle: 'Tủ sách cá nhân & Yêu cầu hoàn trả' },
+  '/my-books': { title: 'Sách Của Tôi', pretitle: 'Tủ sách cá nhân & Yêu cầu hoàn trả' },
+  '/borrow-management': { title: 'Phê Duyệt Mượn Trả', pretitle: 'Kiểm soát luân chuyển tài liệu' },
+  '/roles': { title: 'Phân Quyền Hệ Thống', pretitle: 'Ma trận quyền truy cập' },
+  '/system-config': { title: 'Cấu Hình Hệ Thống', pretitle: 'Chế độ bảo trì & Tham số' },
+  '/change-password': { title: 'Đổi Mật Khẩu', pretitle: 'Bảo mật tài khoản cá nhân' },
+  '/change-email': { title: 'Đổi Email', pretitle: 'Cập nhật địa chỉ liên hệ' },
 };
 
 export default function Topbar({ onToggleSidebar = () => {} }) {
@@ -24,290 +31,133 @@ export default function Topbar({ onToggleSidebar = () => {} }) {
   const user = getUserInfo();
 
   const currentRoute = ROUTE_TITLES[location.pathname] || {
-    title: 'Thư viện số',
-    pretitle: 'Library Management',
+    title: 'Thư Viện Số',
+    pretitle: 'Aura Library System',
   };
 
-  // State thanh tìm kiếm nhanh (Áp dụng ý tưởng Lucian UX/UI Prompt #046 & #249)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const searchContainerRef = useRef(null);
-  const inputRef = useRef(null);
 
-  // Bắt phím tắt Ctrl + K / Cmd + K để focus nhanh vào ô tìm kiếm
+  // Retained legacy component: cancel stale search completion on every query.
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      const isK = e.key?.toLowerCase() === 'k' || e.code === 'KeyK';
-      if ((e.ctrlKey || e.metaKey) && isK) {
-        e.preventDefault();
-        e.stopPropagation();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        setShowDropdown(true);
-      }
-      if (e.key === 'Escape') {
-        setShowDropdown(false);
-        inputRef.current?.blur();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    let active = true;
+    const timer = setTimeout(async () => {
+      if (!query.trim()) { setResults([]); setSearching(false); return; }
+      setSearching(true);
+      try { const response = await searchBooks({ title: query.trim(), page: 0, size: 5 }); if (active) setResults(response.data?.content || []); }
+      catch { if (active) setResults([]); }
+      finally { if (active) setSearching(false); }
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [query]);
 
-  // Tìm kiếm tức thì theo thời gian thực (debounce 200ms)
+  // Click outside listener
   useEffect(() => {
-    const trimmed = searchQuery.trim();
-    if (!trimmed) {
-      setSearchResults([]);
-      setIsSearching(false);
-      setSelectedIndex(-1);
-      return;
-    }
-
-    let cancelled = false;
-    setIsSearching(true);
-    setSelectedIndex(-1);
-
-    const timer = setTimeout(() => {
-      searchBooks({ title: trimmed, page: 0, size: 6 })
-        .then((res) => {
-          if (!cancelled) {
-            const list = res.data?.content || [];
-            setSearchResults(list);
-            setIsSearching(false);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setSearchResults([]);
-            setIsSearching(false);
-          }
-        });
-    }, 200);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [searchQuery]);
-
-  // Đóng dropdown khi click ra ngoài
-  useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handleDocClick = (e) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
-        setShowDropdown(false);
+        setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
   }, []);
 
-  // Chọn một kết quả tìm kiếm
   const handleSelectBook = (book) => {
-    setShowDropdown(false);
-    setSearchQuery('');
-    setSelectedIndex(-1);
+    setIsOpen(false);
+    setQuery('');
     navigate(`/books?title=${encodeURIComponent(book.title)}`);
   };
 
-  // Xem tất cả kết quả
-  const handleViewAll = () => {
-    setShowDropdown(false);
-    setSelectedIndex(-1);
-    const q = searchQuery.trim();
-    navigate(q ? `/books?title=${encodeURIComponent(q)}` : '/books');
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setIsOpen(false);
+    if (query.trim()) {
+      navigate(`/books?title=${encodeURIComponent(query.trim())}`);
+    }
   };
 
   return (
-    <header className="lib-topbar">
-      <div className="lib-topbar-left">
+    <header className="aura-topbar">
+      <div className="topbar-left">
         <button
           type="button"
-          className="lib-mobile-menu-btn"
+          className="topbar-toggle-btn"
           onClick={onToggleSidebar}
-          aria-label="Toggle Navigation Menu"
+          aria-label="Mở thanh điều hướng"
         >
-          ☰
+          <Menu size={20} />
         </button>
 
-        <div className="lib-topbar-breadcrumb">
-          <span className="lib-breadcrumb-pre">{currentRoute.pretitle}</span>
-          <h1 className="lib-breadcrumb-title">{currentRoute.title}</h1>
+        <div className="route-meta">
+          <span className="route-pretitle">{currentRoute.pretitle}</span>
+          <h1 className="route-title">{currentRoute.title}</h1>
         </div>
       </div>
 
-      {/* Thanh tìm kiếm nhanh toàn hệ thống (Ctrl + K) */}
-      <div className="lib-topbar-center" ref={searchContainerRef}>
-        <div className="lib-search-container">
-          <div
-            className="lib-search-input-wrap"
-            onClick={() => {
-              inputRef.current?.focus();
-              setShowDropdown(true);
-            }}
-          >
-            <span className="lib-search-icon">🔍</span>
+      <div className="topbar-right">
+        {/* Quick Search */}
+        <div className="topbar-search-box" ref={searchContainerRef}>
+          <form onSubmit={handleSearchSubmit} className="search-form">
+            <Search size={16} className="search-icon" />
             <input
-              ref={inputRef}
               type="text"
-              className="lib-search-input"
-              placeholder="Tìm nhanh đầu sách... (Ctrl + K)"
-              value={searchQuery}
+              placeholder="Tra cứu sách nhanh..."
+              value={query}
               onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowDropdown(true);
+                setQuery(e.target.value);
+                setIsOpen(true);
               }}
-              onFocus={() => setShowDropdown(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  if (searchResults.length > 0) {
-                    setSelectedIndex((prev) =>
-                      prev < searchResults.length - 1 ? prev + 1 : 0
-                    );
-                  }
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  if (searchResults.length > 0) {
-                    setSelectedIndex((prev) =>
-                      prev > 0 ? prev - 1 : searchResults.length - 1
-                    );
-                  }
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (selectedIndex >= 0 && searchResults[selectedIndex]) {
-                    handleSelectBook(searchResults[selectedIndex]);
-                  } else {
-                    handleViewAll();
-                  }
-                } else if (e.key === 'Escape') {
-                  setShowDropdown(false);
-                  inputRef.current?.blur();
-                }
-              }}
+              onFocus={() => setIsOpen(true)}
             />
-            {isSearching ? (
-              <span style={{ fontSize: '14px', color: '#6366f1' }}>⏳</span>
-            ) : (
-              <span
-                className="lib-search-kbd"
-                title="Nhấn Ctrl + K để tìm nhanh"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inputRef.current?.focus();
-                  inputRef.current?.select();
-                  setShowDropdown(true);
-                }}
-              >
-                Ctrl K
-              </span>
-            )}
-          </div>
+          </form>
 
-          {/* Dropdown xem trước kết quả trực tiếp */}
-          {showDropdown && (
-            <div className="lib-search-dropdown">
-              <div className="lib-search-drop-header">
-                <span>
-                  {searchQuery.trim()
-                    ? `Kết quả tìm kiếm (${searchResults.length})`
-                    : 'Tra cứu nhanh đầu sách'}
-                </span>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Phím ESC để đóng</span>
-              </div>
-
-              {!searchQuery.trim() ? (
-                <div className="lib-search-guide">
-                  <div className="lib-search-guide-title">
-                    <span>💡 Gợi ý tra cứu</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '13.5px', color: '#64748b' }}>
-                    Nhập tên sách, tác giả hoặc mã ISBN để tìm kiếm tức thì trên toàn thư viện.
-                  </p>
-                  <div className="lib-search-guide-tips">
-                    <span className="lib-search-guide-tip">↵ Enter xem tất cả</span>
-                    <span className="lib-search-guide-tip">↑ ↓ chọn sách</span>
-                    <span className="lib-search-guide-tip">ESC để đóng</span>
-                  </div>
+          {isOpen && query.trim() && (
+            <div className="search-dropdown-panel">
+              {searching ? (
+                <div className="search-status-row">
+                  <span className="spinner" />
+                  <span>Đang tra cứu cơ sở dữ liệu...</span>
                 </div>
-              ) : isSearching ? (
-                <div className="lib-search-empty">
-                  <span style={{ marginRight: '8px' }}>⏳</span> Đang tìm kiếm sách...
-                </div>
-              ) : searchResults.length === 0 ? (
-                <div className="lib-search-empty">
-                  <div style={{ fontSize: '24px', marginBottom: '6px' }}>🔍</div>
-                  <div>Không tìm thấy sách nào khớp với &quot;{searchQuery}&quot;</div>
-                  <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>
-                    Hãy thử tìm với từ khóa khác hoặc bấm Enter để tra cứu nâng cao
-                  </div>
+              ) : results.length === 0 ? (
+                <div className="search-status-row">
+                  <span>Không tìm thấy tựa sách nào khớp với &quot;{query}&quot;</span>
                 </div>
               ) : (
-                <div className="lib-search-list">
-                  {searchResults.map((book, idx) => {
-                    const authorStr = Array.from(book.authors || []).join(', ');
-                    const inStock = (book.quantity || 0) > 0;
-                    const isSelected = idx === selectedIndex;
-                    return (
-                      <div
-                        key={book.id}
-                        className={`lib-search-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectBook(book)}
-                        onMouseEnter={() => setSelectedIndex(idx)}
-                      >
-                        <div className="lib-search-item-icon">📖</div>
-                        <div className="lib-search-item-info">
-                          <div className="lib-search-item-title">{book.title}</div>
-                          <div className="lib-search-item-sub">
-                            {authorStr ? `Tác giả: ${authorStr}` : `ISBN: ${book.isbn || '—'}`}
-                          </div>
-                        </div>
-                        <span
-                          className={`lib-search-item-badge ${inStock ? 'in-stock' : 'out-stock'}`}
-                        >
-                          {inStock ? `Còn ${book.quantity}` : 'Hết sách'}
+                <div className="search-results-list">
+                  {results.map((b) => (
+                    <button
+                      type="button"
+                      key={b.id}
+                      className="search-item"
+                      onClick={() => handleSelectBook(b)}
+                    >
+                      <BookMarked size={16} className="item-icon" />
+                      <div className="item-text">
+                        <strong className="item-title">{b.title}</strong>
+                        <span className="item-meta">
+                          {b.author || 'Tác giả chưa cập nhật'} • Còn {b.availableQuantity ?? 0} cuốn
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {searchQuery.trim() && searchResults.length > 0 && (
-                <div className="lib-search-drop-footer" onClick={handleViewAll}>
-                  Xem tất cả kết quả trên trang tra cứu &rarr;
+                      <ArrowRight size={14} className="item-arrow" />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
           )}
         </div>
-      </div>
 
-      <div className="lib-topbar-right">
-        <div className="lib-topbar-user">
-          <div className="lib-topbar-avatar">
-            {user.username.charAt(0).toUpperCase()}
+        <ThemeToggle />
+
+        <div className="topbar-user-pill">
+          <div className="user-avatar-tiny">
+            {(user.username || 'U').charAt(0).toUpperCase()}
           </div>
-          <div className="lib-topbar-info">
-            <strong className="lib-topbar-name">{user.username}</strong>
-            <span className={`lib-role-tag lib-role-${user.badgeColor}`}>
-              {user.groupName}
-            </span>
-          </div>
+          <span className="user-name-tiny">{user.username}</span>
         </div>
-
-        <button
-          type="button"
-          className="lib-topbar-logout"
-          onClick={logout}
-          title="Đăng xuất khỏi hệ thống"
-        >
-          <span>↪</span>
-          <span className="lib-topbar-logout-text">Đăng xuất</span>
-        </button>
       </div>
     </header>
   );

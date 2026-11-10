@@ -1,9 +1,11 @@
+import { API_BASE_URL } from './config';
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = API_BASE_URL;
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
+  timeout: 20000,
 });
 
 // Dùng chung 1 Promise khi nhiều request cùng cần refresh
@@ -39,8 +41,7 @@ const isTokenExpired = (token) => {
 
     // Trừ hao 10 giây để chủ động refresh trước khi token hết hạn thực tế
     return payload.exp <= now + 10;
-  } catch (error) {
-    console.error('Không đọc được access token:', error);
+  } catch {
 
     return true;
   }
@@ -63,7 +64,7 @@ const logoutAndRedirect = () => {
 // REFRESH TOKEN
 // ========================================================
 
-const refreshAccessToken = async () => {
+export const refreshAccessToken = async () => {
   // Nếu request khác đang refresh thì dùng chung Promise đó
   if (refreshPromise) {
     return refreshPromise;
@@ -78,7 +79,7 @@ const refreshAccessToken = async () => {
   refreshPromise = axios
     .post(`${BASE_URL}/auth/refresh`, {
       refreshToken: refreshToken,
-    })
+    }, { timeout: 20000 })
     .then((response) => {
       const newAccessToken = response.data?.accessToken;
 
@@ -94,7 +95,7 @@ const refreshAccessToken = async () => {
         localStorage.setItem('refreshToken', newRefreshToken);
       }
 
-      console.log('Refresh access token thành công!');
+
 
       return newAccessToken;
     })
@@ -135,11 +136,6 @@ axiosClient.interceptors.request.use(
       try {
         accessToken = await refreshAccessToken();
       } catch (refreshError) {
-        console.error(
-          'Refresh token thất bại:',
-          refreshError.response?.status,
-          refreshError.response?.data || refreshError.message,
-        );
 
         logoutAndRedirect();
 
@@ -245,11 +241,6 @@ axiosClient.interceptors.response.use(
 
       return axiosClient(originalRequest);
     } catch (refreshError) {
-      console.error(
-        'REFRESH TOKEN THẤT BẠI:',
-        refreshError.response?.status,
-        refreshError.response?.data || refreshError.message,
-      );
 
       logoutAndRedirect();
 

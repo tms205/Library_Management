@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -51,6 +53,7 @@ public class Book {
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "book_authors", joinColumns = @JoinColumn(name = "book_id"), inverseJoinColumns = @JoinColumn(name = "author_id"))
+	@BatchSize(size = 50)
 	private Set<Author> authors = new HashSet<>();
 
 	// BẮT BUỘC CÓ @JsonIgnore ĐỂ TRÁNH LỖI VÒNG LẶP VÔ TẬN KHI SERIALIZE SÁCH ĐÃ CÓ PHIẾU MƯỢN:

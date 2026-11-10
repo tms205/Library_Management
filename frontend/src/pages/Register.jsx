@@ -1,7 +1,9 @@
+import AuthStory from '../components/AuthStory';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
+import { Library, AlertCircle, CheckCircle2, User, Mail, Calendar, Phone, MapPin, Lock } from 'lucide-react';
 import { register } from '../api/authApi';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/auth.css';
 
 function Register() {
@@ -94,6 +96,7 @@ function Register() {
 
   const handleRegister = async (event) => {
     event.preventDefault();
+    if (loading) return;
 
     setMessage('');
     setMessageType('');
@@ -117,27 +120,23 @@ function Register() {
       });
 
       setMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
-
       setMessageType('success');
 
       setTimeout(() => {
         navigate(`/login?email=${encodeURIComponent(formData.email.trim())}&registered=true`);
       }, 1800);
     } catch (error) {
-      console.error(error);
 
       const data = error.response?.data;
-
       setMessageType('error');
 
       if (data?.message) {
         setMessage(data.message);
       } else if (data && typeof data === 'object') {
         const firstError = Object.values(data)[0];
-
         setMessage(firstError || 'Đăng ký thất bại!');
       } else {
-        setMessage('Không thể kết nối đến server!');
+        setMessage('Không thể kết nối đến máy chủ thư viện!');
       }
     } finally {
       setLoading(false);
@@ -146,121 +145,178 @@ function Register() {
 
   return (
     <div className="auth-page register-page">
+      <AuthStory />
+      <div className="auth-top-actions">
+        <ThemeToggle />
+      </div>
+
       <div className="auth-box">
-        <h1>Library Management</h1>
+        {/* Brand Header */}
+        <div className="auth-brand-badge">
+          <div className="auth-logo-icon">
+            <Library size={24} />
+          </div>
+          <span className="auth-brand-name">Aura Library</span>
+        </div>
 
-        <p className="auth-subtitle">Hệ thống quản lý thư viện</p>
+        <div className="auth-header-text">
+          <h1>Đăng ký thẻ bạn đọc</h1>
+          <p className="auth-subtitle">Tạo tài khoản để mượn sách và trải nghiệm thư viện số</p>
+        </div>
 
-        <h2>Đăng ký tài khoản</h2>
+        {message && (
+          <div className={`auth-alert ${messageType === 'success' ? 'auth-alert-success' : 'auth-alert-error'}`} role="alert">
+            {messageType === 'success' ? <CheckCircle2 size={18} className="auth-alert-icon" /> : <AlertCircle size={18} className="auth-alert-icon" />}
+            <span>{message}</span>
+          </div>
+        )}
 
-        <form onSubmit={handleRegister}>
+        <form onSubmit={handleRegister} className="auth-form" noValidate>
+          {/* Full Name */}
           <div className="form-group">
-            <label>Họ và tên *</label>
-
-            <input
-              type="text"
-              name="fullName"
-              className={errors.fullName ? 'input-error' : ''}
-              placeholder="Nhập họ và tên"
-              value={formData.fullName}
-              onChange={handleChange}
-            />
-            {errors.fullName && <span className="field-error">{errors.fullName}</span>}
+            <label htmlFor="reg-fullname">Họ và tên *</label>
+            <div className="auth-input-wrapper">
+              <User size={17} className="auth-input-leading-icon" />
+              <input
+                id="reg-fullname"
+                type="text"
+                name="fullName"
+                className={errors.fullName ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Nhập họ và tên đầy đủ..."
+                value={formData.fullName}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.fullName && <span className="field-error"><AlertCircle size={13} />{errors.fullName}</span>}
           </div>
 
+          {/* Email */}
           <div className="form-group">
-            <label>Email *</label>
-
-            <input
-              type="email"
-              name="email"
-              className={errors.email ? 'input-error' : ''}
-              placeholder="Nhập email (ví dụ: user@example.com)"
-              value={formData.email}
-              onChange={handleChange}
-            />
-            {errors.email && <span className="field-error">{errors.email}</span>}
+            <label htmlFor="reg-email">Email bạn đọc *</label>
+            <div className="auth-input-wrapper">
+              <Mail size={17} className="auth-input-leading-icon" />
+              <input
+                id="reg-email"
+                type="email"
+                name="email"
+                className={errors.email ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Nhập email (ví dụ: user@example.com)"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.email && <span className="field-error"><AlertCircle size={13} />{errors.email}</span>}
           </div>
 
-          <div className="form-group">
-            <label>Ngày sinh *</label>
+          {/* Row: Date of birth & Phone */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="form-group">
+              <label htmlFor="reg-dob">Ngày sinh *</label>
+              <div className="auth-input-wrapper">
+                <Calendar size={17} className="auth-input-leading-icon" />
+                <input
+                  id="reg-dob"
+                  type="date"
+                  name="dateOfBirth"
+                  className={errors.dateOfBirth ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.dateOfBirth && <span className="field-error"><AlertCircle size={13} />{errors.dateOfBirth}</span>}
+            </div>
 
-            <input
-              type="date"
-              name="dateOfBirth"
-              className={errors.dateOfBirth ? 'input-error' : ''}
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-            />
-            {errors.dateOfBirth && <span className="field-error">{errors.dateOfBirth}</span>}
+            <div className="form-group">
+              <label htmlFor="reg-phone">Số điện thoại *</label>
+              <div className="auth-input-wrapper">
+                <Phone size={17} className="auth-input-leading-icon" />
+                <input
+                  id="reg-phone"
+                  type="text"
+                  name="phone"
+                  className={errors.phone ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                  placeholder="0912345678"
+                  value={formData.phone}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.phone && <span className="field-error"><AlertCircle size={13} />{errors.phone}</span>}
+            </div>
           </div>
 
+          {/* Address */}
           <div className="form-group">
-            <label>Số điện thoại *</label>
-
-            <input
-              type="text"
-              name="phone"
-              className={errors.phone ? 'input-error' : ''}
-              placeholder="Ví dụ: 0912345678"
-              value={formData.phone}
-              onChange={handleChange}
-            />
-            {errors.phone && <span className="field-error">{errors.phone}</span>}
+            <label htmlFor="reg-address">Địa chỉ thường trú *</label>
+            <div className="auth-input-wrapper">
+              <MapPin size={17} className="auth-input-leading-icon" />
+              <input
+                id="reg-address"
+                type="text"
+                name="address"
+                className={errors.address ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Nhập địa chỉ của bạn..."
+                value={formData.address}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.address && <span className="field-error"><AlertCircle size={13} />{errors.address}</span>}
           </div>
 
-          <div className="form-group">
-            <label>Địa chỉ *</label>
+          {/* Password & Confirm Password */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="form-group">
+              <label htmlFor="reg-password">Mật khẩu *</label>
+              <div className="auth-input-wrapper">
+                <Lock size={17} className="auth-input-leading-icon" />
+                <input
+                  id="reg-password"
+                  type="password"
+                  name="password"
+                  className={errors.password ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                  placeholder="Tối thiểu 4 ký tự"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.password && <span className="field-error"><AlertCircle size={13} />{errors.password}</span>}
+            </div>
 
-            <input
-              type="text"
-              name="address"
-              className={errors.address ? 'input-error' : ''}
-              placeholder="Nhập địa chỉ"
-              value={formData.address}
-              onChange={handleChange}
-            />
-            {errors.address && <span className="field-error">{errors.address}</span>}
+            <div className="form-group">
+              <label htmlFor="reg-confirm">Xác nhận mật khẩu *</label>
+              <div className="auth-input-wrapper">
+                <Lock size={17} className="auth-input-leading-icon" />
+                <input
+                  id="reg-confirm"
+                  type="password"
+                  name="confirmPassword"
+                  className={errors.confirmPassword ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                  placeholder="Nhập lại mật khẩu"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.confirmPassword && <span className="field-error"><AlertCircle size={13} />{errors.confirmPassword}</span>}
+            </div>
           </div>
-
-          <div className="form-group">
-            <label>Mật khẩu *</label>
-
-            <input
-              type="password"
-              name="password"
-              className={errors.password ? 'input-error' : ''}
-              placeholder="Nhập mật khẩu (tối thiểu 4 ký tự)"
-              value={formData.password}
-              onChange={handleChange}
-            />
-            {errors.password && <span className="field-error">{errors.password}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Xác nhận mật khẩu *</label>
-
-            <input
-              type="password"
-              name="confirmPassword"
-              className={errors.confirmPassword ? 'input-error' : ''}
-              placeholder="Nhập lại mật khẩu"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-            {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
-          </div>
-
-          {message && <p className={`auth-message ${messageType}`}>{message}</p>}
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Đang đăng ký...' : 'Đăng ký'}
+            {loading ? (
+              <span className="auth-btn-loading">
+                <span className="auth-spinner" />
+                Đang xử lý đăng ký...
+              </span>
+            ) : (
+              'Hoàn tất đăng ký thẻ bạn đọc'
+            )}
           </button>
         </form>
 
-        <p className="auth-link">
-          Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
-        </p>
+        <div className="auth-footer">
+          <span>Đã có tài khoản bạn đọc?</span>
+          <Link to="/login" className="auth-link-bold">
+            Đăng nhập ngay
+          </Link>
+        </div>
       </div>
     </div>
   );

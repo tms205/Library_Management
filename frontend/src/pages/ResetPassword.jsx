@@ -1,7 +1,9 @@
+import AuthStory from '../components/AuthStory';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-
+import { Library, KeyRound, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { resetPassword } from '../api/authApi';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/auth.css';
 
 function ResetPassword() {
@@ -29,8 +31,8 @@ function ResetPassword() {
 
     if (!newPassword) {
       err.newPassword = 'Mật khẩu mới không được để trống!';
-    } else if (newPassword.length < 6) {
-      err.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự!';
+    } else if (newPassword.length < 4) {
+      err.newPassword = 'Mật khẩu mới phải có ít nhất 4 ký tự!';
     }
 
     if (!confirmPassword) {
@@ -45,13 +47,8 @@ function ResetPassword() {
 
   const handleResetPassword = async (event) => {
     event.preventDefault();
-
+    if (loading) return;
     setMessage('');
-
-    if (!email) {
-      setMessage('Không tìm thấy thông tin email. Vui lòng quay lại bước Quên mật khẩu!');
-      return;
-    }
 
     if (!validateForm()) {
       return;
@@ -61,27 +58,22 @@ function ResetPassword() {
       setLoading(true);
 
       await resetPassword({
-        email: email,
+        email: email.trim(),
         otp: otp.trim(),
         newPassword: newPassword,
       });
 
-      setMessage('Đặt lại mật khẩu thành công! Đang chuyển hướng...');
+      setMessage('Đặt lại mật khẩu thành công! Đang chuyển hướng về trang đăng nhập...');
 
       setTimeout(() => {
         navigate('/login');
       }, 1500);
     } catch (error) {
-      console.error(error);
 
-      const data = error.response?.data;
-
-      if (data?.message) {
-        setMessage(data.message);
-      } else if (typeof data === 'string') {
-        setMessage(data);
+      if (error.response?.data?.message) {
+        setMessage(error.response.data.message);
       } else {
-        setMessage('Đặt lại mật khẩu thất bại!');
+        setMessage('Đặt lại mật khẩu thất bại! Vui lòng kiểm tra lại mã OTP.');
       }
     } finally {
       setLoading(false);
@@ -90,80 +82,110 @@ function ResetPassword() {
 
   return (
     <div className="auth-page">
+      <AuthStory />
+      <div className="auth-top-actions">
+        <ThemeToggle />
+      </div>
+
       <div className="auth-box">
-        <h1>Library Management</h1>
+        {/* Brand Header */}
+        <div className="auth-brand-badge">
+          <div className="auth-logo-icon">
+            <Library size={24} />
+          </div>
+          <span className="auth-brand-name">Aura Library</span>
+        </div>
 
-        <p className="auth-subtitle">Hệ thống quản lý thư viện</p>
+        <div className="auth-header-text">
+          <h1>Đặt lại mật khẩu</h1>
+          <p className="auth-subtitle">
+            Nhập mã OTP 6 số đã nhận qua email <strong>{email || 'của bạn'}</strong>
+          </p>
+        </div>
 
-        <h2>Đặt lại mật khẩu</h2>
+        {message && (
+          <div className="auth-alert auth-alert-success" role="alert">
+            <CheckCircle2 size={18} className="auth-alert-icon" />
+            <span>{message}</span>
+          </div>
+        )}
 
-        <form onSubmit={handleResetPassword}>
+        <form onSubmit={handleResetPassword} className="auth-form" noValidate>
           <div className="form-group">
-            <label>Email</label>
-
-            <input type="email" value={email} disabled />
+            <label htmlFor="reset-otp">Mã OTP (6 chữ số) *</label>
+            <div className="auth-input-wrapper">
+              <KeyRound size={17} className="auth-input-leading-icon" />
+              <input
+                id="reset-otp"
+                type="text"
+                maxLength={6}
+                className={errors.otp ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Nhập 6 chữ số OTP..."
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value);
+                  if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }));
+                }}
+              />
+            </div>
+            {errors.otp && <span className="field-error"><AlertCircle size={13} />{errors.otp}</span>}
           </div>
 
           <div className="form-group">
-            <label>Mã OTP *</label>
-
-            <input
-              type="text"
-              className={errors.otp ? 'input-error' : ''}
-              placeholder="Nhập mã OTP 6 số"
-              value={otp}
-              maxLength={6}
-              onChange={(event) => {
-                const value = event.target.value.replace(/\D/g, '');
-                setOtp(value);
-                if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }));
-              }}
-            />
-            {errors.otp && <span className="field-error">{errors.otp}</span>}
+            <label htmlFor="reset-new-password">Mật khẩu mới *</label>
+            <div className="auth-input-wrapper">
+              <Lock size={17} className="auth-input-leading-icon" />
+              <input
+                id="reset-new-password"
+                type="password"
+                className={errors.newPassword ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Tối thiểu 4 ký tự..."
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: '' }));
+                }}
+              />
+            </div>
+            {errors.newPassword && <span className="field-error"><AlertCircle size={13} />{errors.newPassword}</span>}
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu mới *</label>
-
-            <input
-              type="password"
-              className={errors.newPassword ? 'input-error' : ''}
-              placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-              value={newPassword}
-              onChange={(event) => {
-                setNewPassword(event.target.value);
-                if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: '' }));
-              }}
-            />
-            {errors.newPassword && <span className="field-error">{errors.newPassword}</span>}
+            <label htmlFor="reset-confirm-password">Xác nhận mật khẩu mới *</label>
+            <div className="auth-input-wrapper">
+              <Lock size={17} className="auth-input-leading-icon" />
+              <input
+                id="reset-confirm-password"
+                type="password"
+                className={errors.confirmPassword ? 'input-error with-leading-icon' : 'with-leading-icon'}
+                placeholder="Nhập lại mật khẩu mới..."
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' }));
+                }}
+              />
+            </div>
+            {errors.confirmPassword && <span className="field-error"><AlertCircle size={13} />{errors.confirmPassword}</span>}
           </div>
-
-          <div className="form-group">
-            <label>Xác nhận mật khẩu mới *</label>
-
-            <input
-              type="password"
-              className={errors.confirmPassword ? 'input-error' : ''}
-              placeholder="Nhập lại mật khẩu mới"
-              value={confirmPassword}
-              onChange={(event) => {
-                setConfirmPassword(event.target.value);
-                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' }));
-              }}
-            />
-            {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
-          </div>
-
-          {message && <p className="auth-message">{message}</p>}
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+            {loading ? (
+              <span className="auth-btn-loading">
+                <span className="auth-spinner" />
+                Đang cập nhật mật khẩu...
+              </span>
+            ) : (
+              'Cập nhật mật khẩu mới'
+            )}
           </button>
         </form>
 
-        <p className="auth-link">
-          <Link to="/login">Quay lại đăng nhập</Link>
-        </p>
+        <div className="auth-footer">
+          <Link to="/login" className="auth-link-bold">
+            ← Quay lại đăng nhập
+          </Link>
+        </div>
       </div>
     </div>
   );

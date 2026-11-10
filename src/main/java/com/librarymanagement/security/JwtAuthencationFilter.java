@@ -70,7 +70,7 @@ public class JwtAuthencationFilter extends OncePerRequestFilter {
 
 		try {
 
-			// Kiem tra token con hop le
+			// Kiem tra token con hop le ve chu ky va thoi han
 			if (jwtService.isTokenValid(token)) {
 
 				// Lay email tu token
@@ -90,13 +90,20 @@ public class JwtAuthencationFilter extends OncePerRequestFilter {
 					}
 				}
 
-				// Lay danh sach permission tu token
-				List<String> permissions = jwtService.extractPermissions(token);
+				// DYNAMIC AUTHORIZATION: Tải danh sách quyền hiệu lực thực tế từ Database
+				// Ngăn ngừa lỗ hổng Stale JWT: Nếu quyền đã bị Admin thu hồi khỏi nhóm hoặc đổi nhóm,
+				// thao tác nhạy cảm sẽ bị chặn NGAY LẬP TỨC trên request tiếp theo.
+				List<String> permissions;
+				if (accountRepository != null) {
+					permissions = accountRepository.findActivePermissionNamesByEmail(email);
+				} else {
+					permissions = jwtService.extractPermissions(token);
+				}
 
 				/*
 				 * Chuyen:
 				 *
-				 * BOOK_VIEW BOOK_CREATE BOOK_UPDATE
+				 * BOOK_VIEW, BOOK_CREATE, BORROW_APPROVE, RETURN_CONFIRM...
 				 *
 				 * thanh GrantedAuthority cua Spring Security
 				 */
@@ -107,7 +114,7 @@ public class JwtAuthencationFilter extends OncePerRequestFilter {
 				/*
 				 * Tao Authentication
 				 *
-				 * principal = email password = null authorities = danh sach permission
+				 * principal = email, password = null, authorities = danh sach permission hien tai
 				 */
 				UsernamePasswordAuthenticationToken authentication = //
 						new UsernamePasswordAuthenticationToken(email, //

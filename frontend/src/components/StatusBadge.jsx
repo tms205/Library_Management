@@ -1,42 +1,47 @@
-export const STATUS_CONFIG = {
+const STATUS_CONFIG = {
   PENDING: {
     label: 'Chờ duyệt',
-    className: 'lib-badge lib-badge-pending',
+    className: 'badge-clean badge-warning',
     dotColor: '#d97706',
   },
   BORROWED: {
     label: 'Đang mượn',
-    className: 'lib-badge lib-badge-borrowed',
-    dotColor: '#4f46e5',
+    className: 'badge-clean badge-info',
+    dotColor: '#0284c7',
   },
   RETURN_PENDING: {
     label: 'Chờ xác nhận trả',
-    className: 'lib-badge lib-badge-return-pending',
-    dotColor: '#ea580c',
+    className: 'badge-clean badge-purple',
+    dotColor: '#7c3aed',
   },
   RETURNED: {
-    label: 'Đã trả',
-    className: 'lib-badge lib-badge-returned',
-    dotColor: '#16a34a',
+    label: 'Đã hoàn trả',
+    className: 'badge-clean badge-success',
+    dotColor: '#059669',
   },
   REJECTED: {
     label: 'Bị từ chối',
-    className: 'lib-badge lib-badge-rejected',
+    className: 'badge-clean badge-danger',
+    dotColor: '#dc2626',
+  },
+  OVERDUE: {
+    label: 'Quá hạn',
+    className: 'badge-clean badge-danger',
     dotColor: '#dc2626',
   },
 };
 
-export default function StatusBadge({ status }) {
+export default function StatusBadge({ status, customLabel }) {
   const config = STATUS_CONFIG[status] || {
-    label: status || '—',
-    className: 'lib-badge lib-badge-default',
+    label: customLabel || status || '—',
+    className: 'badge-clean badge-neutral',
     dotColor: '#64748b',
   };
 
   return (
     <span className={config.className}>
-      <span className="lib-badge-dot" style={{ backgroundColor: config.dotColor }} />
-      <span>{config.label}</span>
+      <span className="badge-dot" style={{ backgroundColor: config.dotColor }} />
+      <span>{customLabel || config.label}</span>
     </span>
   );
 }

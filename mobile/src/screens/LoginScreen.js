@@ -34,8 +34,13 @@ export default function LoginScreen({ navigation }) {
     setPinging(true);
     setPingResult(null);
     try {
-      const ok = await pingServer(serverUrl.trim());
-      if (ok) {
+      const res = await pingServer(serverUrl.trim());
+      if (res && typeof res === 'object') {
+        setPingResult({
+          success: res.ok,
+          message: res.message,
+        });
+      } else if (res) {
         setPingResult({ success: true, message: 'Kết nối máy chủ thành công!' });
       } else {
         setPingResult({
@@ -43,8 +48,8 @@ export default function LoginScreen({ navigation }) {
           message: 'Không phản hồi. Kiểm tra lại IP hoặc cùng Wi-Fi.',
         });
       }
-    } catch {
-      setPingResult({ success: false, message: 'Lỗi kết nối tới máy chủ.' });
+    } catch (err) {
+      setPingResult({ success: false, message: `Lỗi kết nối: ${err.message || 'Không xác định'}` });
     } finally {
       setPinging(false);
     }

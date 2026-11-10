@@ -2,8 +2,9 @@ import axiosClient from './axiosClient';
 
 const API_URL = '/api/books';
 
-export const searchBooks = (params) => {
+export const searchBooks = (params, options = {}) => {
   return axiosClient.get(`${API_URL}/search`, {
+    ...options,
     params,
   });
 };

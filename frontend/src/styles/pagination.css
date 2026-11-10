@@ -1,0 +1,88 @@
+@import './design-tokens.css';
+
+/* =========================================================================
+   AURA LIBRARY — ENTERPRISE SAAS PAGINATION BAR
+   Data Density Insights • Jump-to-Page Range • Page Size Selection
+   ========================================================================= */
+
+.pagination-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 4px 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.pagination-info strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-btn {
+  height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-input);
+}
+
+.pagination-btn.active {
+  background: var(--primary-accent);
+  border-color: var(--primary-accent);
+  color: #ffffff;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+  padding: 0 4px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.pagination-size-select {
+  height: 34px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}

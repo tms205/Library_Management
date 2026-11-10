@@ -1,0 +1,56 @@
+@import './design-tokens.css';
+
+/* =========================================================================
+   AURA LIBRARY — INTERACTIVE EMPTY STATE COMPONENT
+   Guided User Recovery • Zero Dead Ends • Contextual Actions
+   ========================================================================= */
+
+.empty-state-root {
+  padding: 56px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin: 12px 0;
+}
+
+.empty-state-icon-disc {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+.empty-state-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.empty-state-desc {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 440px;
+}
+
+.empty-state-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}

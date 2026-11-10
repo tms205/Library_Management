@@ -26,6 +26,10 @@ import {
 } from '../api/systemConfigApi';
 import {
   getPermissionGroupsApi,
+  getAllPermissionsApi,
+  createPermissionGroupApi,
+  updatePermissionGroupApi,
+  deletePermissionGroupApi,
   searchAccountsForRolesApi,
   updateAccountRoleApi,
 } from '../api/roleApi';
@@ -60,6 +64,7 @@ export default function ProfileScreen() {
 
   // Modal quản lý phân quyền (Admin)
   const [rolesModalVisible, setRolesModalVisible] = useState(false);
+  const [roleTab, setRoleTab] = useState('accounts'); // 'accounts' | 'groups'
   const [roleGroups, setRoleGroups] = useState([]);
   const [roleAccounts, setRoleAccounts] = useState([]);
   const [roleSearch, setRoleSearch] = useState('');
@@ -68,6 +73,16 @@ export default function ProfileScreen() {
   const [editRoleModalVisible, setEditRoleModalVisible] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [roleSaving, setRoleSaving] = useState(false);
+
+  // Modal Tạo / Chỉnh sửa nhóm quyền (Dynamic RBAC)
+  const [allPermissions, setAllPermissions] = useState([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [groupName, setGroupName] = useState('');
+  const [groupDesc, setGroupDesc] = useState('');
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState([]);
+  const [savingGroup, setSavingGroup] = useState(false);
 
   useEffect(() => {
     getBaseUrl().then(setServerUrl);
@@ -253,15 +268,157 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleOpenRolesModal = async () => {
+  const fetchAllPermissions = async () => {
+    try {
+      setLoadingPermissions(true);
+      const perms = await getAllPermissionsApi();
+      setAllPermissions(perms || []);
+      return perms || [];
+    } catch (err) {
+      console.log('Error fetching permissions:', err);
+      return [];
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const handleOpenRolesModal = async (initialTab = 'accounts') => {
+    setRoleTab(initialTab);
     setRolesModalVisible(true);
     try {
-      const groups = await getPermissionGroupsApi();
+      const [groups, perms] = await Promise.all([
+        getPermissionGroupsApi(),
+        allPermissions.length > 0 ? Promise.resolve(allPermissions) : getAllPermissionsApi(),
+      ]);
       setRoleGroups(groups || []);
+      if (allPermissions.length === 0 && perms) {
+        setAllPermissions(perms);
+      }
     } catch (err) {
-      console.log('Error loading groups:', err);
+      console.log('Error loading groups or permissions:', err);
     }
     fetchRoleAccounts('');
+  };
+
+  const handleOpenCreateGroup = async () => {
+    setEditingGroup(null);
+    setGroupName('');
+    setGroupDesc('');
+    setSelectedPermissionIds([]);
+    setCreateGroupModalVisible(true);
+    if (allPermissions.length === 0) {
+      await fetchAllPermissions();
+    }
+  };
+
+  const handleOpenEditGroup = async (group) => {
+    setEditingGroup(group);
+    setGroupName(group.name || '');
+    setGroupDesc(group.description || '');
+
+    let currentPerms = allPermissions;
+    if (currentPerms.length === 0) {
+      currentPerms = await fetchAllPermissions();
+    }
+
+    const ids = (currentPerms || [])
+      .filter((p) => group.permissions?.includes(p.name))
+      .map((p) => p.id);
+    setSelectedPermissionIds(ids);
+    setCreateGroupModalVisible(true);
+  };
+
+  const handleTogglePermission = (permId) => {
+    setSelectedPermissionIds((prev) =>
+      prev.includes(permId) ? prev.filter((id) => id !== permId) : [...prev, permId]
+    );
+  };
+
+  const handleSelectAllPermissions = () => {
+    setSelectedPermissionIds(allPermissions.map((p) => p.id));
+  };
+
+  const handleDeselectAllPermissions = () => {
+    setSelectedPermissionIds([]);
+  };
+
+  const handleSaveGroup = async () => {
+    const trimmedName = groupName.trim();
+    if (!trimmedName) {
+      Alert.alert('Lỗi', 'Vui lòng nhập tên nhóm quyền!');
+      return;
+    }
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      Alert.alert('Lỗi', 'Tên nhóm quyền phải từ 2 đến 100 ký tự!');
+      return;
+    }
+
+    try {
+      setSavingGroup(true);
+      if (editingGroup) {
+        await updatePermissionGroupApi(editingGroup.id, {
+          name: trimmedName,
+          description: groupDesc.trim(),
+          permissionIds: selectedPermissionIds,
+        });
+        Alert.alert('Thành công', `Đã cập nhật nhóm quyền "${trimmedName}" thành công!`);
+      } else {
+        await createPermissionGroupApi({
+          name: trimmedName,
+          description: groupDesc.trim(),
+          permissionIds: selectedPermissionIds,
+        });
+        Alert.alert('Thành công', `Đã tạo mới nhóm quyền "${trimmedName}" thành công!`);
+      }
+      setCreateGroupModalVisible(false);
+      const updatedGroups = await getPermissionGroupsApi();
+      setRoleGroups(updatedGroups || []);
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Không thể lưu nhóm quyền!';
+      Alert.alert('Lỗi', msg);
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = (group) => {
+    if (group.isDefault) {
+      Alert.alert('Thông báo', 'Không thể xóa các nhóm quyền mặc định của hệ thống!');
+      return;
+    }
+    if (group.accountCount > 0) {
+      Alert.alert(
+        'Không thể xóa',
+        `Nhóm này đang được gán cho ${group.accountCount} tài khoản. Vui lòng chuyển các tài khoản sang nhóm khác trước khi xóa!`,
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Xác nhận xóa nhóm quyền',
+      `Bạn có chắc chắn muốn xóa nhóm quyền "${group.name}" không? Hành động này không thể hoàn tác.`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa ngay',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePermissionGroupApi(group.id);
+              Alert.alert('Thành công', `Đã xóa nhóm quyền "${group.name}"!`);
+              const updatedGroups = await getPermissionGroupsApi();
+              setRoleGroups(updatedGroups || []);
+            } catch (err) {
+              Alert.alert('Lỗi', err.response?.data?.message || 'Không thể xóa nhóm quyền!');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleSelectAccountForRole = (acc) => {
@@ -377,11 +534,22 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={handleOpenRolesModal}
+            onPress={() => handleOpenRolesModal('accounts')}
+          >
+            <View style={styles.actionRowLeft}>
+              <Text style={styles.actionIcon}>👥</Text>
+              <Text style={styles.actionLabel}>Phân quyền tài khoản</Text>
+            </View>
+            <Text style={styles.arrowText}>➔</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => handleOpenRolesModal('groups')}
           >
             <View style={styles.actionRowLeft}>
               <Text style={styles.actionIcon}>🛡️</Text>
-              <Text style={styles.actionLabel}>Phân quyền tài khoản</Text>
+              <Text style={styles.actionLabel}>Quản lý & Tạo nhóm quyền</Text>
             </View>
             <Text style={styles.arrowText}>➔</Text>
           </TouchableOpacity>
@@ -642,100 +810,211 @@ export default function ProfileScreen() {
         onRequestClose={() => setRolesModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+          <View style={[styles.modalContent, { maxHeight: '92%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🛡️ Phân quyền tài khoản</Text>
+              <Text style={styles.modalTitle}>🛡️ Quản lý phân quyền</Text>
               <TouchableOpacity onPress={() => setRolesModalVisible(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Tìm kiếm tài khoản */}
-            <View style={styles.roleSearchRow}>
-              <TextInput
-                style={styles.roleSearchInput}
-                placeholder="Tìm email..."
-                placeholderTextColor="#94a3b8"
-                value={roleSearch}
-                onChangeText={setRoleSearch}
-                onSubmitEditing={() => fetchRoleAccounts(roleSearch)}
-              />
+            {/* Segmented Tab Row */}
+            <View style={styles.segmentTabRow}>
               <TouchableOpacity
-                style={styles.roleSearchBtn}
-                onPress={() => fetchRoleAccounts(roleSearch)}
+                style={[styles.segmentTabBtn, roleTab === 'accounts' && styles.segmentTabBtnActive]}
+                onPress={() => setRoleTab('accounts')}
               >
-                <Text style={styles.roleSearchBtnText}>Tìm</Text>
+                <Text style={[styles.segmentTabBtnText, roleTab === 'accounts' && styles.segmentTabBtnTextActive]}>
+                  👥 Tài khoản
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.segmentTabBtn, roleTab === 'groups' && styles.segmentTabBtnActive]}
+                onPress={() => {
+                  setRoleTab('groups');
+                  if (allPermissions.length === 0) fetchAllPermissions();
+                }}
+              >
+                <Text style={[styles.segmentTabBtnText, roleTab === 'groups' && styles.segmentTabBtnTextActive]}>
+                  🛡️ Nhóm quyền ({roleGroups.length})
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {roleLoading ? (
-              <View style={{ padding: 24, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#4f46e5" />
-                <Text style={{ color: '#94a3b8', marginTop: 8 }}>Đang tải tài khoản...</Text>
-              </View>
-            ) : (
-              <ScrollView style={{ maxHeight: 400 }}>
-                {roleAccounts.length === 0 ? (
+            {/* TAB 1: PHÂN QUYỀN TÀI KHOẢN */}
+            {roleTab === 'accounts' && (
+              <>
+                {/* Tìm kiếm tài khoản */}
+                <View style={styles.roleSearchRow}>
+                  <TextInput
+                    style={styles.roleSearchInput}
+                    placeholder="Tìm email..."
+                    placeholderTextColor="#94a3b8"
+                    value={roleSearch}
+                    onChangeText={setRoleSearch}
+                    onSubmitEditing={() => fetchRoleAccounts(roleSearch)}
+                  />
+                  <TouchableOpacity
+                    style={styles.roleSearchBtn}
+                    onPress={() => fetchRoleAccounts(roleSearch)}
+                  >
+                    <Text style={styles.roleSearchBtnText}>Tìm</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {roleLoading ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#4f46e5" />
+                    <Text style={{ color: '#94a3b8', marginTop: 8 }}>Đang tải tài khoản...</Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 380 }}>
+                    {roleAccounts.length === 0 ? (
+                      <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20 }}>
+                        Không tìm thấy tài khoản nào.
+                      </Text>
+                    ) : (
+                      roleAccounts.map((acc) => {
+                        const isRootAdmin = acc.accountId === 1 || acc.email?.toLowerCase() === 'admin';
+                        const isSelf = userInfo?.email && acc.email?.toLowerCase() === userInfo.email.toLowerCase();
+
+                        return (
+                          <View key={acc.accountId} style={styles.roleAccountCard}>
+                            <View style={styles.roleAccountHeader}>
+                              <View style={{ flex: 1, paddingRight: 8 }}>
+                                <Text style={styles.roleAccountEmail}>{acc.email}</Text>
+                                <Text style={styles.roleAccountName}>
+                                  👤 {acc.fullName || 'Chưa liên kết hồ sơ'}
+                                </Text>
+                              </View>
+                              <View>
+                                {acc.groupName === 'ADMIN_GROUP' && (
+                                  <View style={[styles.groupBadge, styles.groupBadgeAdmin]}>
+                                    <Text style={styles.groupBadgeAdminText}>👑 Admin</Text>
+                                  </View>
+                                )}
+                                {acc.groupName === 'STAFF_GROUP' && (
+                                  <View style={[styles.groupBadge, styles.groupBadgeStaff]}>
+                                    <Text style={styles.groupBadgeStaffText}>🧑‍💼 Thủ thư</Text>
+                                  </View>
+                                )}
+                                {acc.groupName === 'USER_GROUP' && (
+                                  <View style={[styles.groupBadge, styles.groupBadgeUser]}>
+                                    <Text style={styles.groupBadgeUserText}>📖 Độc giả</Text>
+                                  </View>
+                                )}
+                                {acc.groupName !== 'ADMIN_GROUP' &&
+                                  acc.groupName !== 'STAFF_GROUP' &&
+                                  acc.groupName !== 'USER_GROUP' && (
+                                    <View style={[styles.groupBadge, styles.groupBadgeOther]}>
+                                      <Text style={styles.groupBadgeOtherText}>{acc.groupName}</Text>
+                                    </View>
+                                  )}
+                              </View>
+                            </View>
+
+                            <View style={styles.roleAccountFooter}>
+                              {isRootAdmin ? (
+                                <Text style={styles.protectedText}>🔒 Quản trị tối cao</Text>
+                              ) : isSelf ? (
+                                <Text style={styles.protectedText}>🔒 Tài khoản của bạn</Text>
+                              ) : (
+                                <TouchableOpacity
+                                  style={styles.changeRoleBtn}
+                                  onPress={() => handleSelectAccountForRole(acc)}
+                                >
+                                  <Text style={styles.changeRoleBtnText}>⚙️ Đổi vai trò</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                )}
+              </>
+            )}
+
+            {/* TAB 2: QUẢN LÝ NHÓM QUYỀN (DYNAMIC RBAC) */}
+            {roleTab === 'groups' && (
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                {/* Nút Tạo nhóm quyền mới */}
+                <TouchableOpacity
+                  style={styles.createGroupBtn}
+                  onPress={handleOpenCreateGroup}
+                >
+                  <Text style={styles.createGroupBtnText}>➕ Tạo nhóm quyền mới</Text>
+                </TouchableOpacity>
+
+                {roleGroups.length === 0 ? (
                   <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20 }}>
-                    Không tìm thấy tài khoản nào.
+                    Chưa có nhóm quyền nào.
                   </Text>
                 ) : (
-                  roleAccounts.map((acc) => {
-                    const isRootAdmin = acc.accountId === 1 || acc.email?.toLowerCase() === 'admin';
-                    const isSelf = userInfo?.email && acc.email?.toLowerCase() === userInfo.email.toLowerCase();
-
-                    return (
-                      <View key={acc.accountId} style={styles.roleAccountCard}>
-                        <View style={styles.roleAccountHeader}>
-                          <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={styles.roleAccountEmail}>{acc.email}</Text>
-                            <Text style={styles.roleAccountName}>
-                              👤 {acc.fullName || 'Chưa liên kết hồ sơ'}
-                            </Text>
-                          </View>
-                          <View>
-                            {acc.groupName === 'ADMIN_GROUP' && (
-                              <View style={[styles.groupBadge, styles.groupBadgeAdmin]}>
-                                <Text style={styles.groupBadgeAdminText}>👑 Admin</Text>
-                              </View>
-                            )}
-                            {acc.groupName === 'STAFF_GROUP' && (
-                              <View style={[styles.groupBadge, styles.groupBadgeStaff]}>
-                                <Text style={styles.groupBadgeStaffText}>🧑‍💼 Thủ thư</Text>
-                              </View>
-                            )}
-                            {acc.groupName === 'USER_GROUP' && (
-                              <View style={[styles.groupBadge, styles.groupBadgeUser]}>
-                                <Text style={styles.groupBadgeUserText}>📖 Độc giả</Text>
-                              </View>
-                            )}
-                            {acc.groupName !== 'ADMIN_GROUP' &&
-                              acc.groupName !== 'STAFF_GROUP' &&
-                              acc.groupName !== 'USER_GROUP' && (
-                                <View style={[styles.groupBadge, styles.groupBadgeOther]}>
-                                  <Text style={styles.groupBadgeOtherText}>{acc.groupName}</Text>
-                                </View>
-                              )}
-                          </View>
+                  roleGroups.map((group) => (
+                    <View key={group.id} style={styles.groupCard}>
+                      <View style={styles.groupCardHeader}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={styles.groupCardName}>{group.name}</Text>
+                          <Text style={styles.groupCardDesc}>
+                            {group.description || 'Chưa có mô tả cho nhóm này'}
+                          </Text>
                         </View>
-
-                        <View style={styles.roleAccountFooter}>
-                          {isRootAdmin ? (
-                            <Text style={styles.protectedText}>🔒 Quản trị tối cao</Text>
-                          ) : isSelf ? (
-                            <Text style={styles.protectedText}>🔒 Tài khoản của bạn</Text>
-                          ) : (
-                            <TouchableOpacity
-                              style={styles.changeRoleBtn}
-                              onPress={() => handleSelectAccountForRole(acc)}
-                            >
-                              <Text style={styles.changeRoleBtnText}>⚙️ Đổi vai trò</Text>
-                            </TouchableOpacity>
-                          )}
+                        <View style={[styles.groupDefaultBadge, group.isDefault ? styles.badgeDefault : styles.badgeCustom]}>
+                          <Text style={[styles.groupDefaultBadgeText, group.isDefault ? styles.badgeDefaultText : styles.badgeCustomText]}>
+                            {group.isDefault ? 'Mặc định' : 'Tùy chỉnh'}
+                          </Text>
                         </View>
                       </View>
-                    );
-                  })
+
+                      {/* Thông tin số lượng */}
+                      <View style={styles.groupStatsRow}>
+                        <Text style={styles.groupStatItem}>
+                          👥 {group.accountCount || 0} tài khoản đang gán
+                        </Text>
+                        <Text style={styles.groupStatItem}>
+                          🔑 {(group.permissions || []).length} quyền hạn
+                        </Text>
+                      </View>
+
+                      {/* Danh sách quyền tóm tắt */}
+                      <View style={styles.groupPermPillsWrapper}>
+                        {(group.permissions || []).slice(0, 5).map((pName) => (
+                          <View key={pName} style={styles.permChip}>
+                            <Text style={styles.permChipText}>{pName}</Text>
+                          </View>
+                        ))}
+                        {(group.permissions || []).length > 5 && (
+                          <View style={[styles.permChip, { backgroundColor: '#334155' }]}>
+                            <Text style={styles.permChipText}>+{(group.permissions.length - 5)} quyền nữa</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Các nút thao tác */}
+                      <View style={styles.groupCardActions}>
+                        <TouchableOpacity
+                          style={styles.editGroupBtn}
+                          onPress={() => handleOpenEditGroup(group)}
+                        >
+                          <Text style={styles.editGroupBtnText}>✏️ Chỉnh sửa quyền</Text>
+                        </TouchableOpacity>
+
+                        {!group.isDefault && (
+                          <TouchableOpacity
+                            style={[
+                              styles.deleteGroupBtn,
+                              (group.accountCount > 0) && { opacity: 0.4 },
+                            ]}
+                            onPress={() => handleDeleteGroup(group)}
+                          >
+                            <Text style={styles.deleteGroupBtnText}>🗑️ Xóa</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))
                 )}
               </ScrollView>
             )}
@@ -805,6 +1084,133 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal Tạo mới hoặc Chỉnh sửa Nhóm quyền (Dynamic RBAC) */}
+      <Modal
+        visible={createGroupModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCreateGroupModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingOverlay}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { maxHeight: '92%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editingGroup ? '✏️ Sửa nhóm quyền' : '➕ Tạo nhóm quyền mới'}
+                </Text>
+                <TouchableOpacity onPress={() => setCreateGroupModalVisible(false)}>
+                  <Text style={styles.modalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 24 }}
+              >
+                {/* Tên nhóm */}
+                <Text style={styles.inputLabel}>Tên nhóm quyền *</Text>
+                <TextInput
+                  style={[
+                    styles.modalInput,
+                    editingGroup?.isDefault && { backgroundColor: '#1e293b', opacity: 0.7 },
+                  ]}
+                  placeholder="VD: THU_THU_KHO, QUAN_LY_DOC_GIA..."
+                  placeholderTextColor="#94a3b8"
+                  value={groupName}
+                  onChangeText={setGroupName}
+                  editable={!editingGroup?.isDefault}
+                  autoCapitalize="characters"
+                />
+                {editingGroup?.isDefault && (
+                  <Text style={{ fontSize: 11, color: '#f59e0b', marginTop: -8, marginBottom: 10 }}>
+                    🔒 Không thể đổi tên nhóm quyền mặc định của hệ thống.
+                  </Text>
+                )}
+
+                {/* Mô tả nhóm */}
+                <Text style={styles.inputLabel}>Mô tả trách nhiệm & chức năng</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 60, textAlignVertical: 'top' }]}
+                  placeholder="Mô tả chức năng phân quyền của nhóm này..."
+                  placeholderTextColor="#94a3b8"
+                  value={groupDesc}
+                  onChangeText={setGroupDesc}
+                  multiline
+                />
+
+                {/* Danh sách phân quyền */}
+                <View style={styles.permListHeaderRow}>
+                  <Text style={styles.inputLabel}>
+                    Chọn các quyền được phép ({selectedPermissionIds.length}/{allPermissions.length}):
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity onPress={handleSelectAllPermissions}>
+                      <Text style={styles.permQuickBtn}>Tất cả</Text>
+                    </TouchableOpacity>
+                    <Text style={{ color: '#64748b' }}>|</Text>
+                    <TouchableOpacity onPress={handleDeselectAllPermissions}>
+                      <Text style={styles.permQuickBtn}>Bỏ chọn</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {loadingPermissions ? (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#4f46e5" />
+                    <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
+                      Đang tải danh sách quyền...
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.permChecklistContainer}>
+                    {allPermissions.map((perm) => {
+                      const isChecked = selectedPermissionIds.includes(perm.id);
+                      return (
+                        <TouchableOpacity
+                          key={perm.id}
+                          style={[styles.permCheckItem, isChecked && styles.permCheckItemSelected]}
+                          onPress={() => handleTogglePermission(perm.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 16 }}>{isChecked ? '☑️' : '⬜'}</Text>
+                          <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={[styles.permCodeText, isChecked && styles.permCodeTextSelected]}>
+                              {perm.name}
+                            </Text>
+                            <Text style={styles.permDescText}>
+                              {perm.description || perm.name}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Nút Submit */}
+                <TouchableOpacity
+                  style={[styles.modalSubmitBtn, savingGroup && styles.btnDisabled]}
+                  onPress={handleSaveGroup}
+                  disabled={savingGroup}
+                >
+                  {savingGroup ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.modalSubmitText}>
+                      {editingGroup ? 'Lưu thay đổi nhóm quyền' : 'Tạo nhóm quyền ngay'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   </KeyboardAvoidingView>
@@ -1221,5 +1627,196 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94a3b8',
     marginTop: 2,
+  },
+  // Segmented Tabs
+  segmentTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  segmentTabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  segmentTabBtnActive: {
+    backgroundColor: '#4f46e5',
+  },
+  segmentTabBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  segmentTabBtnTextActive: {
+    color: '#fff',
+  },
+  // Permission Group Management
+  createGroupBtn: {
+    backgroundColor: '#6366f1',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  createGroupBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  groupCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  groupCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  groupCardName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  groupCardDesc: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  groupDefaultBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeDefault: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+  },
+  badgeDefaultText: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeCustom: {
+    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+  },
+  badgeCustomText: {
+    color: '#c084fc',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  groupStatsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+  },
+  groupStatItem: {
+    fontSize: 12,
+    color: '#cbd5e1',
+    fontWeight: '500',
+  },
+  groupPermPillsWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginTop: 8,
+  },
+  permChip: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  permChipText: {
+    fontSize: 10.5,
+    color: '#a5b4fc',
+    fontWeight: '600',
+  },
+  groupCardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+  },
+  editGroupBtn: {
+    backgroundColor: '#334155',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  editGroupBtnText: {
+    color: '#f8fafc',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deleteGroupBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  deleteGroupBtnText: {
+    color: '#f87171',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Checklist permissions
+  permListHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 6,
+  },
+  permQuickBtn: {
+    fontSize: 12,
+    color: '#38bdf8',
+    fontWeight: '600',
+  },
+  permChecklistContainer: {
+    gap: 6,
+    marginBottom: 14,
+  },
+  permCheckItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  permCheckItemSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+  },
+  permCodeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#cbd5e1',
+  },
+  permCodeTextSelected: {
+    color: '#a5b4fc',
+  },
+  permDescText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 1,
   },
 });

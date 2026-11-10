@@ -13,3 +13,10 @@ export const updateMaintenanceMode = (maintenanceMode) => {
     maintenanceMode: maintenanceMode,
   });
 };
+
+// CAP NHAT CAU HINH THOI HAN MUON SACH (SO NGAY)
+export const updateBorrowDuration = (borrowDurationDays) => {
+  return axiosClient.put(`${API_URL}/borrow-duration`, {
+    borrowDurationDays: Number(borrowDurationDays),
+  });
+};

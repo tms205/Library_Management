@@ -26,12 +26,18 @@ const FILTER_TABS = [
   { key: 'RETURNED', label: 'Đã trả' },
 ];
 
-export default function MyBooksScreen() {
+export default function MyBooksScreen({ route }) {
   const [records, setRecords] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [activeFilter, setActiveFilter] = useState(route?.params?.status || 'ALL');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [returningId, setReturningId] = useState(null);
+
+  useEffect(() => {
+    if (route?.params?.status) {
+      setActiveFilter(route.params.status);
+    }
+  }, [route?.params?.status]);
 
   const fetchRecords = useCallback(async (isRefresh = false) => {
     try {

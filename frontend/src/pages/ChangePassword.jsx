@@ -1,15 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  KeyRound,
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+  ArrowLeft,
+} from 'lucide-react';
 import { changePassword } from '../api/changePasswordApi';
-
 import '../styles/changePassword.css';
 
-function ChangePassword() {
+export default function ChangePassword() {
   const navigate = useNavigate();
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -34,7 +47,7 @@ function ChangePassword() {
     if (!confirmPassword) {
       err.confirmPassword = 'Vui lòng nhập lại mật khẩu mới!';
     } else if (newPassword !== confirmPassword) {
-      err.confirmPassword = 'Mật khẩu nhập lại không khớp!';
+      err.confirmPassword = 'Mật khẩu xác nhận không khớp!';
     }
 
     setErrors(err);
@@ -65,12 +78,11 @@ function ChangePassword() {
       setNewPassword('');
       setConfirmPassword('');
 
-      // Sau 1 giây chuyển về Dashboard
       setTimeout(() => {
         navigate('/dashboard');
-      }, 1000);
+      }, 1200);
     } catch (err) {
-      console.error(err);
+
 
       const data = err.response?.data;
 
@@ -81,7 +93,7 @@ function ChangePassword() {
       } else if (data?.error) {
         setError(data.error);
       } else {
-        setError('Không thể đổi mật khẩu!');
+        setError('Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại!');
       }
     } finally {
       setLoading(false);
@@ -91,68 +103,133 @@ function ChangePassword() {
   return (
     <div className="change-password-page">
       <div className="change-password-card">
-        <div className="change-password-header">
-          <p>Library / Account Security</p>
-          <h1>Đổi mật khẩu tài khoản</h1>
-          <span>Cập nhật mật khẩu bảo mật mới cho tài khoản của bạn.</span>
-        </div>
+        <header className="change-password-header">
+          <div className="change-password-icon-wrapper">
+            <KeyRound size={24} />
+          </div>
+          <div>
+            <div className="change-password-pretitle">Tài khoản &bull; Bảo mật</div>
+            <h1>Đổi mật khẩu tài khoản</h1>
+            <p>Cập nhật mật khẩu mới để bảo vệ an toàn cho tài khoản thư viện của bạn.</p>
+          </div>
+        </header>
 
-        {error && <div className="change-password-error">{error}</div>}
-        {message && <div className="change-password-success">{message}</div>}
+        {error && (
+          <div className="change-password-msg error">
+            <AlertCircle size={18} className="msg-icon" />
+            <span>{error}</span>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        {message && (
+          <div className="change-password-msg success">
+            <CheckCircle2 size={18} className="msg-icon" />
+            <span>{message}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate className="change-password-form">
+          {/* Mật khẩu hiện tại */}
           <div className="change-password-field">
-            <label>Mật khẩu hiện tại *</label>
-            <input
-              type="password"
-              className={errors.oldPassword ? 'input-error' : ''}
-              placeholder="Nhập mật khẩu hiện tại"
-              value={oldPassword}
-              onChange={(event) => {
-                setOldPassword(event.target.value);
-                if (errors.oldPassword) setErrors((prev) => ({ ...prev, oldPassword: '' }));
-              }}
-            />
-            {errors.oldPassword && <span className="field-error">{errors.oldPassword}</span>}
+            <label htmlFor="oldPassword">Mật khẩu hiện tại *</label>
+            <div className={`input-with-icon ${errors.oldPassword ? 'has-error' : ''}`}>
+              <Lock size={16} className="field-prefix-icon" />
+              <input
+                id="oldPassword"
+                type={showOld ? 'text' : 'password'}
+                placeholder="Nhập mật khẩu bạn đang dùng"
+                value={oldPassword}
+                onChange={(event) => {
+                  setOldPassword(event.target.value);
+                  if (errors.oldPassword) setErrors((prev) => ({ ...prev, oldPassword: '' }));
+                }}
+              />
+              <button
+                type="button"
+                className="btn-toggle-eye"
+                onClick={() => setShowOld((prev) => !prev)}
+                aria-label={showOld ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.oldPassword && <span className="field-error-text">{errors.oldPassword}</span>}
           </div>
 
+          {/* Mật khẩu mới */}
           <div className="change-password-field">
-            <label>Mật khẩu mới *</label>
-            <input
-              type="password"
-              className={errors.newPassword ? 'input-error' : ''}
-              placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-              value={newPassword}
-              onChange={(event) => {
-                setNewPassword(event.target.value);
-                if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: '' }));
-              }}
-            />
-            {errors.newPassword && <span className="field-error">{errors.newPassword}</span>}
+            <label htmlFor="newPassword">Mật khẩu mới *</label>
+            <div className={`input-with-icon ${errors.newPassword ? 'has-error' : ''}`}>
+              <Lock size={16} className="field-prefix-icon" />
+              <input
+                id="newPassword"
+                type={showNew ? 'text' : 'password'}
+                placeholder="Tối thiểu 6 ký tự"
+                value={newPassword}
+                onChange={(event) => {
+                  setNewPassword(event.target.value);
+                  if (errors.newPassword) setErrors((prev) => ({ ...prev, newPassword: '' }));
+                }}
+              />
+              <button
+                type="button"
+                className="btn-toggle-eye"
+                onClick={() => setShowNew((prev) => !prev)}
+                aria-label={showNew ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.newPassword && <span className="field-error-text">{errors.newPassword}</span>}
           </div>
 
+          {/* Xác nhận mật khẩu mới */}
           <div className="change-password-field">
-            <label>Xác nhận lại mật khẩu mới *</label>
-            <input
-              type="password"
-              className={errors.confirmPassword ? 'input-error' : ''}
-              placeholder="Nhập lại mật khẩu mới"
-              value={confirmPassword}
-              onChange={(event) => {
-                setConfirmPassword(event.target.value);
-                if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' }));
-              }}
-            />
-            {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
+            <label htmlFor="confirmPassword">Xác nhận mật khẩu mới *</label>
+            <div className={`input-with-icon ${errors.confirmPassword ? 'has-error' : ''}`}>
+              <ShieldCheck size={16} className="field-prefix-icon" />
+              <input
+                id="confirmPassword"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Nhập lại chính xác mật khẩu mới"
+                value={confirmPassword}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value);
+                  if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: '' }));
+                }}
+              />
+              <button
+                type="button"
+                className="btn-toggle-eye"
+                onClick={() => setShowConfirm((prev) => !prev)}
+                aria-label={showConfirm ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <span className="field-error-text">{errors.confirmPassword}</span>
+            )}
           </div>
 
-          <button type="submit" className="change-password-button" disabled={loading}>
-            {loading ? 'Đang xử lý...' : 'Xác nhận đổi mật khẩu'}
-          </button>
+          <div className="change-password-actions">
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={loading}
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft size={15} />
+              <span>Quay lại</span>
+            </button>
+
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              <KeyRound size={15} />
+              <span>{loading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu'}</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 }
-
-export default ChangePassword;

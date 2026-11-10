@@ -71,12 +71,52 @@ export const confirmChangeEmailApi = async (code) => {
 
 export const pingServer = async (baseUrl) => {
   try {
-    const res = await axios.get(`${baseUrl}/swagger-ui/index.html`, {
-      timeout: 4000,
+    let url = (baseUrl || '').trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `http://${url}`;
+    }
+    while (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+
+    const res = await axios.get(`${url}/swagger-ui/index.html`, {
+      timeout: 5000,
+      validateStatus: () => true, // chấp nhận mọi status code trả về từ server
     });
-    return res.status === 200;
+
+    return {
+      ok: true,
+      status: res.status,
+      message: `Kết nối máy chủ thành công (HTTP ${res.status})!`,
+      url,
+    };
   } catch (err) {
-    if (err.response) return true;
-    return false;
+    if (err.response) {
+      // Có response trả về từ Spring Boot (kể cả 403 từ Spring Security) -> Máy chủ online!
+      return {
+        ok: true,
+        status: err.response.status,
+        message: `Máy chủ phản hồi (HTTP ${err.response.status})!`,
+      };
+    }
+
+    const errMsg = err.message || '';
+    if (errMsg.toLowerCase().includes('cleartext')) {
+      return {
+        ok: false,
+        message: 'Lỗi Android: Giao thức HTTP không mã hóa (Cleartext) bị chặn bởi hệ thống.',
+      };
+    }
+    if (errMsg.toLowerCase().includes('timeout') || err.code === 'ECONNABORTED') {
+      return {
+        ok: false,
+        message: 'Quá thời gian kết nối (Timeout). Vui lòng kiểm tra điện thoại và máy chủ có cùng mạng Wi-Fi không.',
+      };
+    }
+
+    return {
+      ok: false,
+      message: `Không phản hồi: ${errMsg || 'Kiểm tra lại IP hoặc cùng Wi-Fi'}`,
+    };
   }
 };

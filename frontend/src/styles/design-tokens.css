@@ -1,0 +1,569 @@
+/* =========================================================================
+   AURA LIBRARY — MODERN, MINIMAL & ROLE-BASED DESIGN SYSTEM TOKENS
+   Comprehensive Universal CSS Tokens & Component Primitives | WCAG 2.2 AA
+   ========================================================================= */
+
+:root {
+  /* =========================================================================
+     LIGHT MODE THEME (Clean Editorial SaaS)
+     ========================================================================= */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --bg-surface-subtle: #f8fafc;
+  --bg-surface-muted: #e2e8f0;
+
+  --border-light: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --border-focus: #087f75;
+  --border-input: #cbd5e1;
+
+  /* Typography Scale */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* Brand Accents */
+  --primary-accent: #087f75;
+  --primary-accent-hover: #06685f;
+  --primary-accent-soft: #edf7f5;
+  --primary-accent-border: #b8ded8;
+
+  --secondary-accent: #0d9488;
+  --secondary-accent-hover: #0f766e;
+  --secondary-accent-soft: #f0fdfa;
+  --secondary-accent-border: #ccfbf1;
+
+  /* Role-Specific Accents */
+  --user-accent: #0d9488;
+  --user-accent-hover: #0f766e;
+  --user-accent-soft: #f0fdfa;
+  --user-accent-border: #ccfbf1;
+
+  --staff-accent: #087f75;
+  --staff-accent-hover: #06685f;
+  --staff-accent-soft: #edf7f5;
+  --staff-accent-border: #b8ded8;
+
+  --admin-sidebar-bg: #0f172a;
+  --admin-sidebar-hover: #1e293b;
+  --admin-accent: #087f75;
+  --admin-accent-hover: #06685f;
+  --admin-accent-soft: #edf7f5;
+  --admin-accent-border: #b8ded8;
+
+  /* Semantic Status */
+  --status-success: #10b981;
+  --status-success-soft: #ecfdf5;
+  --status-success-border: #a7f3d0;
+  --status-success-text: #065f46;
+
+  --status-warning: #f59e0b;
+  --status-warning-soft: #fffbeb;
+  --status-warning-border: #fde68a;
+  --status-warning-text: #92400e;
+
+  --status-danger: #ef4444;
+  --status-danger-soft: #fef2f2;
+  --status-danger-border: #fecaca;
+  --status-danger-text: #991b1b;
+
+  --status-info: #3b82f6;
+  --status-info-soft: #edf7f5;
+  --status-info-border: #b8ded8;
+  --status-info-text: #1e40af;
+
+  --status-purple: #8b5cf6;
+  --status-purple-soft: #f5f3ff;
+  --status-purple-border: #ddd6fe;
+  --status-purple-text: #6b21a8;
+
+  /* SaaS Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 4px -1px rgba(15, 23, 42, 0.03);
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================================================================
+   DARK MODE THEME (Professional Dark Library Workspace)
+   ========================================================================= */
+[data-theme="dark"] {
+  --bg-app: #0b1220;
+  --bg-surface: #111c2e;
+  --bg-surface-elevated: #19263b;
+  --bg-surface-subtle: #162238;
+  --bg-surface-muted: #1e293b;
+
+  --border-light: #334155;
+  --border-subtle: #1e293b;
+  --border-focus: #5ed4c3;
+  --border-input: #475569;
+
+  /* Typography Scale */
+  --text-primary: #f1f5f9;
+  --text-secondary: #bac7d5;
+  --text-muted: #9cacc0;
+  --text-inverse: #0f172a;
+
+  /* Brand Accents */
+  --primary-accent: #5ed4c3;
+  --primary-accent-hover: #91e4d7;
+  --primary-accent-soft: rgba(94, 212, 195, 0.14);
+  --primary-accent-border: rgba(94, 212, 195, 0.35);
+
+  --secondary-accent: #2dd4bf;
+  --secondary-accent-hover: #5eead4;
+  --secondary-accent-soft: rgba(45, 212, 191, 0.14);
+  --secondary-accent-border: rgba(45, 212, 191, 0.35);
+
+  /* Role-Specific Accents */
+  --user-accent: #2dd4bf;
+  --user-accent-hover: #5eead4;
+  --user-accent-soft: rgba(45, 212, 191, 0.14);
+  --user-accent-border: rgba(45, 212, 191, 0.35);
+
+  --staff-accent: #5ed4c3;
+  --staff-accent-hover: #91e4d7;
+  --staff-accent-soft: rgba(56, 189, 248, 0.14);
+  --staff-accent-border: rgba(56, 189, 248, 0.35);
+
+  --admin-sidebar-bg: #070d18;
+  --admin-sidebar-hover: #111c2e;
+  --admin-accent: #5ed4c3;
+  --admin-accent-hover: #91e4d7;
+  --admin-accent-soft: rgba(94, 212, 195, 0.14);
+  --admin-accent-border: rgba(94, 212, 195, 0.35);
+
+  /* Semantic Status (Dark Mode) */
+  --status-success: #34d399;
+  --status-success-soft: rgba(16, 185, 129, 0.16);
+  --status-success-border: rgba(16, 185, 129, 0.35);
+  --status-success-text: #6ee7b7;
+
+  --status-warning: #fbbf24;
+  --status-warning-soft: rgba(245, 158, 11, 0.16);
+  --status-warning-border: rgba(245, 158, 11, 0.35);
+  --status-warning-text: #fde68a;
+
+  --status-danger: #f87171;
+  --status-danger-soft: rgba(239, 68, 68, 0.16);
+  --status-danger-border: rgba(239, 68, 68, 0.35);
+  --status-danger-text: #fca5a5;
+
+  --status-info: #5ed4c3;
+  --status-info-soft: rgba(59, 130, 246, 0.16);
+  --status-info-border: rgba(59, 130, 246, 0.35);
+  --status-info-text: #91e4d7;
+
+  --status-purple: #a78bfa;
+  --status-purple-soft: rgba(139, 92, 246, 0.16);
+  --status-purple-border: rgba(139, 92, 246, 0.35);
+  --status-purple-text: #d8b4fe;
+
+  /* Shadows (Subtle Dark Mode Ambient) */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 2px 8px -2px rgba(0, 0, 0, 0.35), 0 1px 4px -1px rgba(0, 0, 0, 0.25);
+}
+
+/* =========================================================================
+   GLOBAL BASE & RESETS
+   ========================================================================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* =========================================================================
+   GLOBAL FORM CONTROLS (Zero Default Browser HTML)
+   ========================================================================= */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  height: 42px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+textarea {
+  height: auto;
+  min-height: 80px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(8, 127, 117, 0.15);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  box-shadow: 0 0 0 3px rgba(94, 212, 195, 0.2);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+/* Global Form Group */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+}
+
+/* Form Validation */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--status-danger-text);
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+input.input-error,
+select.input-error,
+textarea.input-error {
+  border-color: var(--status-danger) !important;
+  background-color: var(--status-danger-soft) !important;
+}
+
+input.input-error:focus,
+select.input-error:focus,
+textarea.input-error:focus {
+  border-color: var(--status-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18) !important;
+}
+
+/* =========================================================================
+   UNIVERSAL BUTTON PRIMITIVES
+   ========================================================================= */
+button,
+.btn {
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 0 16px;
+  height: 40px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  outline: none;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+button:active,
+.btn:active {
+  transform: translateY(1px);
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background-color: var(--primary-accent);
+  color: #ffffff !important;
+  border-color: var(--primary-accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-accent-hover);
+  border-color: var(--primary-accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-outline {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-input);
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-surface-muted);
+}
+
+.btn-success {
+  background-color: var(--status-success-soft);
+  border: 1px solid var(--status-success-border);
+  color: var(--status-success-text);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--status-success);
+  color: #ffffff;
+  border-color: var(--status-success);
+}
+
+.btn-danger {
+  background-color: var(--status-danger-soft);
+  border: 1px solid var(--status-danger-border);
+  color: var(--status-danger-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--status-danger);
+  color: #ffffff;
+  border-color: var(--status-danger);
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+/* =========================================================================
+   UNIVERSAL STATUS BADGES
+   ========================================================================= */
+.badge-clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge-warning {
+  background-color: var(--status-warning-soft);
+  color: var(--status-warning-text);
+  border: 1px solid var(--status-warning-border);
+}
+
+.badge-info {
+  background-color: var(--status-info-soft);
+  color: var(--status-info-text);
+  border: 1px solid var(--status-info-border);
+}
+
+.badge-purple {
+  background-color: var(--status-purple-soft);
+  color: var(--status-purple-text);
+  border: 1px solid var(--status-purple-border);
+}
+
+.badge-success {
+  background-color: var(--status-success-soft);
+  color: var(--status-success-text);
+  border: 1px solid var(--status-success-border);
+}
+
+.badge-danger {
+  background-color: var(--status-danger-soft);
+  color: var(--status-danger-text);
+  border: 1px solid var(--status-danger-border);
+}
+
+.badge-neutral {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+
+/* =========================================================================
+   UNIVERSAL SPINNER & LOADING
+   ========================================================================= */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(148, 163, 184, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================================
+   UI/UX PRO MAX — ACCESSIBILITY & MOTION GUIDELINES
+   WCAG 2.2 AA Contrast • Visible Focus Rings • Responsive Touch Targets
+   ========================================================================= */
+
+/* Visible Focus Indicators for Keyboard Nav */
+:focus-visible {
+  outline: 2px solid var(--primary-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Reduced Motion Mode */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Text Selection Styling */
+::selection {
+  background-color: rgba(8, 127, 117, 0.25);
+  color: inherit;
+}
+
+/* Theme-Safe Webkit Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-input);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Mobile-First Touch Targets (Apple HIG & Material 44px+) */
+@media (max-width: 768px) {
+  button,
+  .btn,
+  input,
+  select {
+    min-height: 44px;
+  }
+}
+
+/* Subtle Interactive Lift */
+.interactive-card {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-accent-border);
+}
+
+
+:root { --font-body: 'Be Vietnam Pro', sans-serif; --font-display: 'Noto Serif', Georgia, serif; --ink: #163e3a; --paper: #f2ede3; --on-accent: #fff; --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px; color-scheme: light; }
+[data-theme="dark"] { --ink: #a3e0d5; --paper: #23322f; --on-accent: #082a26; color-scheme: dark; }
+.btn-primary, .auth-button { color: var(--on-accent) !important; }
+button { background: var(--bg-surface-elevated); color: var(--text-primary); }
+input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; accent-color: var(--primary-accent); }
+input[type="checkbox"], input[type="radio"] { padding: 0; }
+svg { flex-shrink: 0; }
+h1,h2,h3,h4,p { overflow-wrap: anywhere; }
+h1,h2,h3,h4 { line-height: 1.4; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.skip-link { position:fixed; top:-100px; left:16px; z-index:100; padding:12px 18px; background:var(--bg-surface); border:1px solid var(--primary-accent); border-radius:8px; }
+.skip-link:focus { top:12px; }
+.icon-button { width:38px; height:38px; padding:0; border:1px solid var(--border-light); background:var(--bg-surface); color:var(--text-secondary); border-radius:8px; }
+.icon-button:hover { background:var(--bg-surface-elevated); color:var(--primary-accent); }
+.library-brand { display:inline-flex; gap:10px; align-items:center; color:var(--text-primary); }
+.library-mark { width:40px; height:44px; display:grid; place-items:center; background:var(--primary-accent); color:var(--on-accent); border-radius:11px 11px 11px 2px; }
+.library-brand strong { display:block; font-size:32px; line-height:1; font-weight:700; letter-spacing:-1.5px; }
+.brand-period { color:var(--primary-accent); }
+.library-brand small { display:block; margin-top:6px; font-size:8px; font-weight:600; letter-spacing:1.4px; }
+.avatar { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:var(--primary-accent-soft); color:var(--primary-accent); border:1px solid var(--primary-accent-border); font-weight:600; flex-shrink:0; }
+.avatar-small { width:32px; height:32px; font-size:12px; }
+.eyebrow { font-size:11px; font-weight:600; letter-spacing:1.7px; color:var(--primary-accent); }
+.error-state { text-align:center; padding:48px 24px; display:flex; flex-direction:column; align-items:center; }
+.error-state-icon { width:48px; height:48px; display:grid; place-items:center; background:var(--status-danger-soft); color:var(--status-danger-text); border-radius:14px; }
+.error-state h3 { margin:16px 0 4px; font-size:16px; }
+.error-state p { color:var(--text-secondary); font-size:13px; max-width:500px; margin:0 0 20px; }

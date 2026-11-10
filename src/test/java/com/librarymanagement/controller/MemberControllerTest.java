@@ -10,14 +10,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.ResponseEntity;
 
 import com.librarymanagement.dto.request.CreateMemberRequest;
 import com.librarymanagement.dto.response.MemberResponse;
-import com.librarymanagement.entity.Member;
 import com.librarymanagement.service.MemberService;
 
 class MemberControllerTest {
@@ -37,17 +35,20 @@ class MemberControllerTest {
 	@Test
 	void searchMember_ShouldReturnResult() {
 
-		Member member = org.mockito.Mockito.mock(Member.class, Answers.RETURNS_DEEP_STUBS);
+		MemberResponse memberResponse = new MemberResponse(
+				1L,
+				"Nguyen Van A",
+				LocalDate.of(2005, 5, 10),
+				"0901234567",
+				"Ho Chi Minh",
+				10L,
+				"member@gmail.com",
+				true,
+				0,
+				"USER"
+		);
 
-		when(member.getId()).thenReturn(1L);
-		when(member.getFullName()).thenReturn("Nguyen Van A");
-		when(member.getDateOfBirth()).thenReturn(LocalDate.of(2005, 5, 10));
-		when(member.getPhone()).thenReturn("0901234567");
-		when(member.getAddress()).thenReturn("Ho Chi Minh");
-		when(member.getAccount().getId()).thenReturn(10L);
-		when(member.getAccount().getEmail()).thenReturn("member@gmail.com");
-
-		Page<Member> page = new PageImpl<>(List.of(member));
+		Page<MemberResponse> page = new PageImpl<>(List.of(memberResponse));
 
 		when(memberService.searchMember(null, null, null, 0, 10, "id", "asc", null, null, null)).thenReturn(page);
 
@@ -68,17 +69,20 @@ class MemberControllerTest {
 
 		CreateMemberRequest request = org.mockito.Mockito.mock(CreateMemberRequest.class);
 
-		Member member = org.mockito.Mockito.mock(Member.class, Answers.RETURNS_DEEP_STUBS);
+		MemberResponse memberResponse = new MemberResponse(
+				2L,
+				"Tran Van B",
+				LocalDate.of(2004, 8, 20),
+				"0912345678",
+				"Go Vap",
+				11L,
+				"member2@gmail.com",
+				true,
+				0,
+				"USER"
+		);
 
-		when(member.getId()).thenReturn(2L);
-		when(member.getFullName()).thenReturn("Tran Van B");
-		when(member.getDateOfBirth()).thenReturn(LocalDate.of(2004, 8, 20));
-		when(member.getPhone()).thenReturn("0912345678");
-		when(member.getAddress()).thenReturn("Go Vap");
-		when(member.getAccount().getId()).thenReturn(11L);
-		when(member.getAccount().getEmail()).thenReturn("member2@gmail.com");
-
-		when(memberService.createMember(request)).thenReturn(member);
+		when(memberService.createMember(request)).thenReturn(memberResponse);
 
 		ResponseEntity<MemberResponse> response = memberController.createMember(request);
 
